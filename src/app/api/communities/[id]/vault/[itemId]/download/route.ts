@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { getSignedUrlForR2, getSignedUrlForR2Download } from "@/lib/r2";
 
 export async function GET(request: Request, context: { params: Promise<{ id: string, itemId: string }> }) {
@@ -28,8 +29,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       return NextResponse.json({ error: "Access Denied. Join community to download." }, { status: 403 })
     }
 
-    // Fetch the community vault item & linked vault item files
-    const { data: sharedItem, error: fetchError } = await supabase
+    const adminSupabase = createAdminClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    // Fetch the community vault item & linked vault item files using admin client
+    const { data: sharedItem, error: fetchError } = await adminSupabase
       .from('community_vault_items')
       .select(`
         vault_item:vault_items (

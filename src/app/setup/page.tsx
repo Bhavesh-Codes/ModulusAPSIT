@@ -70,7 +70,7 @@ export default function SetupPage() {
         .from("users")
         .select("college, stream, course, year, tags")
         .eq("id", user.id)
-        .single()
+        .maybeSingle()
 
       if (data) {
         form.reset({
@@ -143,14 +143,16 @@ export default function SetupPage() {
     if (user) {
       const { error } = await supabase
         .from("users")
-        .update({
+        .upsert({
+          id: user.id,
+          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
+          email: user.email,
           college: data.college,
           stream: data.stream,
           course: data.course,
           year: data.year,
           tags: data.tags,
         })
-        .eq("id", user.id)
 
       if (error) {
         console.error("Profile update failed:", error)

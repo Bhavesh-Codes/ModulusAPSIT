@@ -77,29 +77,52 @@ export default function ProfilePage() {
   // Fetch User Profile
   useEffect(() => {
     const loadProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      try {
+        const { data: { user }, error: authError } = await supabase.auth.getUser()
+        if (authError || !user) return
 
-      const { data } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single()
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id)
+          .maybeSingle()
 
-      if (data) {
-        const fullProfile = {
-          id: user.id,
-          name: data.name || user.user_metadata?.full_name || "",
-          email: user.email || "",
-          college: data.college || "",
-          stream: data.stream || "",
-          course: data.course || "",
-          year: data.year || "",
-          tags: data.tags || [],
-          profile_pic: data.profile_pic || null,
+        let userRecord = data
+
+        // If no record exists in public.users, create one on the fly (self-heal)
+        if (!userRecord) {
+          const fallbackData = {
+            id: user.id,
+            name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
+            email: user.email || "",
+            profile_pic: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+          }
+
+          const { data: inserted } = await supabase
+            .from("users")
+            .upsert(fallbackData)
+            .select()
+            .maybeSingle()
+
+          userRecord = inserted || fallbackData
         }
+
+        const fullProfile: UserProfile = {
+          id: user.id,
+          name: userRecord.name || user.user_metadata?.full_name || user.user_metadata?.name || "User",
+          email: user.email || userRecord.email || "",
+          college: userRecord.college || "",
+          stream: userRecord.stream || "",
+          course: userRecord.course || "",
+          year: userRecord.year || "",
+          tags: userRecord.tags || [],
+          profile_pic: userRecord.profile_pic || null,
+        }
+
         setProfile(fullProfile)
         setEditForm(fullProfile)
+      } catch (err) {
+        console.error("Failed to load profile:", err)
       }
     }
     loadProfile()

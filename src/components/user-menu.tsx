@@ -34,7 +34,7 @@ export default function UserMenu() {
           .from("users")
           .select("name, college, profile_pic")
           .eq("id", user.id)
-          .single()
+          .maybeSingle()
 
         setProfile({
           name: data?.name ?? user.user_metadata?.full_name ?? null,
