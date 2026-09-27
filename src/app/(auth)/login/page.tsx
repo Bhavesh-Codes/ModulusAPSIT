@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -8,9 +8,10 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { getFriendlyAuthErrorMessage, setAuthSource } from "@/lib/auth-errors"
 
 const loginSchema = z.object({
   email: z.string().email({ message: "Invalid email address" }),
@@ -31,6 +32,35 @@ export default function LoginPage() {
     defaultValues: { email: "", password: "" },
   })
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const email = searchParams.get('email')
+    if (email) form.setValue("email", email)
+
+    // Check for auth errors returned from OAuth or redirect
+    const hashString = window.location.hash.startsWith('#')
+      ? window.location.hash.substring(1)
+      : window.location.hash
+    const hashParams = new URLSearchParams(hashString)
+
+    const err = searchParams.get('error') || hashParams.get('error')
+    const errDesc = searchParams.get('error_description') || hashParams.get('error_description')
+
+    if (err || errDesc) {
+      const friendlyMsg = getFriendlyAuthErrorMessage(errDesc || err)
+      setTimeout(() => {
+        setErrorText(friendlyMsg)
+      }, 0)
+      // Clean up error params from the URL bar without reloading
+      searchParams.delete('error')
+      searchParams.delete('error_description')
+      searchParams.delete('error_code')
+      const newQuery = searchParams.toString()
+      const newUrl = window.location.pathname + (newQuery ? `?${newQuery}` : '')
+      window.history.replaceState({}, document.title, newUrl)
+    }
+  }, [form])
+
   const watchedEmail = form.watch("email")
   const watchedPassword = form.watch("password")
   const signupUrl = `/signup?email=${encodeURIComponent(watchedEmail || "")}&password=${encodeURIComponent(watchedPassword || "")}`
@@ -44,7 +74,7 @@ export default function LoginPage() {
     })
     
     if (error) {
-      setErrorText(error.message)
+      setErrorText(getFriendlyAuthErrorMessage(error.message))
       setIsLoading(false)
     } else {
       router.push("/")
@@ -53,12 +83,20 @@ export default function LoginPage() {
   }
 
   async function onGoogleSignIn() {
-    await supabase.auth.signInWithOAuth({
+    setIsLoading(true)
+    setErrorText(null)
+    // Mark OAuth origin as login so callback knows where to redirect on error
+    setAuthSource("login")
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     })
+    if (error) {
+      setErrorText(getFriendlyAuthErrorMessage(error.message))
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -69,7 +107,7 @@ export default function LoginPage() {
       </div>
 
       <div className="space-y-6">
-        <Button variant="secondary" className="w-full" onClick={onGoogleSignIn} type="button">
+        <Button variant="secondary" className="w-full" onClick={onGoogleSignIn} type="button" disabled={isLoading}>
           <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
@@ -143,8 +181,9 @@ export default function LoginPage() {
           </div>
 
           {errorText && (
-            <div className="bg-[#FF3B30] text-white p-3 rounded-[12px] text-[14px] font-sans border-[2px] border-foreground">
-              {errorText}
+            <div className="bg-[#FF3B30] text-white p-3.5 rounded-[12px] text-[14px] font-sans border-[2px] border-foreground flex items-start gap-2.5 shadow-[3px_3px_0px_black]">
+              <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+              <span className="leading-snug font-medium">{errorText}</span>
             </div>
           )}
 

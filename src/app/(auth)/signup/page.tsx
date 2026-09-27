@@ -8,9 +8,10 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { getFriendlyAuthErrorMessage, setAuthSource } from "@/lib/auth-errors"
 
 const signupSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters" }),
@@ -33,11 +34,34 @@ export default function SignupPage() {
   })
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const email = params.get('email')
-    const password = params.get('password')
+    const searchParams = new URLSearchParams(window.location.search)
+    const email = searchParams.get('email')
+    const password = searchParams.get('password')
     if (email) form.setValue("email", email)
     if (password) form.setValue("password", password)
+
+    // Check for auth errors returned from OAuth or redirect
+    const hashString = window.location.hash.startsWith('#')
+      ? window.location.hash.substring(1)
+      : window.location.hash
+    const hashParams = new URLSearchParams(hashString)
+
+    const err = searchParams.get('error') || hashParams.get('error')
+    const errDesc = searchParams.get('error_description') || hashParams.get('error_description')
+
+    if (err || errDesc) {
+      const friendlyMsg = getFriendlyAuthErrorMessage(errDesc || err)
+      setTimeout(() => {
+        setErrorText(friendlyMsg)
+      }, 0)
+      // Clean up error params from the URL bar without reloading
+      searchParams.delete('error')
+      searchParams.delete('error_description')
+      searchParams.delete('error_code')
+      const newQuery = searchParams.toString()
+      const newUrl = window.location.pathname + (newQuery ? `?${newQuery}` : '')
+      window.history.replaceState({}, document.title, newUrl)
+    }
   }, [form])
 
   async function onSubmit(data: SignupFormValues) {
@@ -56,7 +80,7 @@ export default function SignupPage() {
     })
     
     if (signUpError) {
-      setErrorText(signUpError.message)
+      setErrorText(getFriendlyAuthErrorMessage(signUpError.message))
       setIsLoading(false)
     } else {
       router.push("/setup")
@@ -65,12 +89,20 @@ export default function SignupPage() {
   }
 
   async function onGoogleSignIn() {
-    await supabase.auth.signInWithOAuth({
+    setIsLoading(true)
+    setErrorText(null)
+    // Mark OAuth origin as signup so callback knows where to redirect on error
+    setAuthSource("signup")
+    const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/api/auth/callback`,
       },
     })
+    if (error) {
+      setErrorText(getFriendlyAuthErrorMessage(error.message))
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -81,7 +113,7 @@ export default function SignupPage() {
       </div>
 
       <div className="space-y-6">
-        <Button variant="secondary" className="w-full" onClick={onGoogleSignIn} type="button">
+        <Button variant="secondary" className="w-full" onClick={onGoogleSignIn} type="button" disabled={isLoading}>
           <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
@@ -150,8 +182,9 @@ export default function SignupPage() {
         </div>
 
         {errorText && (
-          <div className="bg-[#FF3B30] text-white p-3 rounded-[12px] text-[14px] font-sans border-[2px] border-foreground">
-            {errorText}
+          <div className="bg-[#FF3B30] text-white p-3.5 rounded-[12px] text-[14px] font-sans border-[2px] border-foreground flex items-start gap-2.5 shadow-[3px_3px_0px_black]">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <span className="leading-snug font-medium">{errorText}</span>
           </div>
         )}
 
