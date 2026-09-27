@@ -138,11 +138,11 @@ export function CommunitySettingsModal({ community, currentUserRole }: Community
     setIsDeleting(true)
     try {
       await deleteModule(community.id)
-      toast.success("Community deleted")
+      toast.success("Group deleted")
       setOpen(false)
-      router.push("/modules")
+      router.push("/groups")
     } catch (error: unknown) {
-      toast.error(error instanceof Error ? error.message : "Failed to delete community")
+      toast.error(error instanceof Error ? error.message : "Failed to delete group")
       setIsDeleting(false)
     }
   }

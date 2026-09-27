@@ -285,6 +285,7 @@ export async function shareToModuleVault(
   if (error) throw new Error(error.message)
 
   revalidatePath(`/modules/${moduleId}/vault`)
+  revalidatePath(`/groups/${moduleId}/vault`)
   return data
 }
 
@@ -311,6 +312,7 @@ export async function removeModuleVaultItem(moduleId: string, itemId: string) {
   if (deleteError) throw new Error(deleteError.message)
 
   revalidatePath(`/modules/${moduleId}/vault`)
+  revalidatePath(`/groups/${moduleId}/vault`)
   return { success: true }
 }
 
@@ -342,6 +344,7 @@ export async function updateModuleVaultItem(
   if (error) throw new Error(error.message)
 
   revalidatePath(`/modules/${moduleId}/vault`)
+  revalidatePath(`/groups/${moduleId}/vault`)
   return data
 }
 
@@ -373,6 +376,7 @@ export async function createModuleVaultFolder(
   if (error) throw new Error(error.message)
 
   revalidatePath(`/modules/${moduleId}/vault`)
+  revalidatePath(`/groups/${moduleId}/vault`)
   return data
 }
 
@@ -417,6 +421,7 @@ export async function updateModuleVaultFolder(
   if (error) throw new Error(error.message)
 
   revalidatePath(`/modules/${moduleId}/vault`)
+  revalidatePath(`/groups/${moduleId}/vault`)
   return data
 }
 
@@ -466,5 +471,6 @@ export async function deleteModuleVaultFolder(moduleId: string, folderId: string
   await performRecursiveDelete(folderId)
 
   revalidatePath(`/modules/${moduleId}/vault`)
+  revalidatePath(`/groups/${moduleId}/vault`)
   return { success: true }
 }

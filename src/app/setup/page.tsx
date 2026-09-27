@@ -8,16 +8,14 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, ArrowRight, ArrowLeft, Plus, X } from "lucide-react"
+import { Loader2, ArrowRight, ArrowLeft, Check, ShieldCheck, Users } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
+import { toast } from "sonner"
 
 const setupSchema = z.object({
-  college: z.string().min(2, "College/University is required"),
-  stream: z.string().min(2, "Stream is required"),
-  course: z.string().min(2, "Course is required"),
-  year: z.string().min(1, "Year is required"),
-  tags: z.array(z.string()),
+  name: z.string().min(2, { message: "Name must be at least 2 characters" }),
+  title: z.string().optional(),
 })
 
 type SetupFormValues = z.infer<typeof setupSchema>
@@ -42,18 +40,15 @@ export default function SetupPage() {
   const [direction, setDirection] = useState(1)
   const [isLoading, setIsLoading] = useState(false)
   const [isFetching, setIsFetching] = useState(true)
-  const [currentTag, setCurrentTag] = useState("")
+  const [userRole, setUserRole] = useState<string>("faculty")
   const router = useRouter()
   const supabase = createClient()
 
   const form = useForm<SetupFormValues>({
     resolver: zodResolver(setupSchema),
     defaultValues: {
-      college: "",
-      stream: "",
-      course: "",
-      year: "",
-      tags: [],
+      name: "",
+      title: "",
     },
   })
 
@@ -68,98 +63,67 @@ export default function SetupPage() {
 
       const { data } = await supabase
         .from("users")
-        .select("college, stream, course, year, tags")
+        .select("name, title, role")
         .eq("id", user.id)
         .maybeSingle()
 
       if (data) {
         form.reset({
-          college: data.college ?? "",
-          stream: data.stream ?? "",
-          course: data.course ?? "",
-          year: data.year ?? "",
-          tags: data.tags ?? [],
+          name: data.name || user.user_metadata?.full_name || "",
+          title: data.title ?? "",
+        })
+        if (data.role) setUserRole(data.role)
+      } else {
+        form.reset({
+          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "",
+          title: "",
         })
       }
       setIsFetching(false)
     }
 
     loadProfile()
-  }, [])
-
-  const formTags = form.watch("tags")
+  }, [form, router, supabase])
 
   const handleSkip = () => {
     router.push("/profile")
   }
 
   const handleNext = async () => {
-    let isValid = false
-    if (step === 1) {
-      isValid = await form.trigger(["college", "stream"])
-    } else if (step === 2) {
-      isValid = await form.trigger(["course", "year"])
-    }
-
+    const isValid = await form.trigger(["name", "title"])
     if (isValid) {
+      // Save the profile data when moving to step 2
+      const data = form.getValues()
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const cleanTitle = data.title && data.title.trim() !== "" ? data.title.trim() : null
+        const cleanName = data.name.trim()
+        await supabase
+          .from("users")
+          .update({ name: cleanName, title: cleanTitle })
+          .eq("id", user.id)
+      }
       setDirection(1)
-      setStep((s) => s + 1)
+      setStep(2)
     }
   }
 
   const handleBack = () => {
     setDirection(-1)
-    setStep((s) => s - 1)
+    setStep(1)
   }
 
-  const handleAddTag = (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.preventDefault()
-    if (!currentTag.trim()) return
-    const tags = form.getValues("tags")
-    if (!tags.includes(currentTag.trim())) {
-      form.setValue("tags", [...tags, currentTag.trim()])
-    }
-    setCurrentTag("")
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      e.preventDefault() // prevent form submission on enter
-      if (step === 3) handleAddTag(e)
-    }
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    form.setValue(
-      "tags",
-      form.getValues("tags").filter((t) => t !== tagToRemove)
-    )
-  }
-
-  const onSubmit = async (data: SetupFormValues) => {
-    setIsLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
-
-    if (user) {
-      const { error } = await supabase
-        .from("users")
-        .upsert({
-          id: user.id,
-          name: user.user_metadata?.full_name || user.user_metadata?.name || user.email?.split("@")[0] || "User",
-          email: user.email,
-          college: data.college,
-          stream: data.stream,
-          course: data.course,
-          year: data.year,
-          tags: data.tags,
-        })
-
-      if (error) {
-        console.error("Profile update failed:", error)
-      }
-    }
-
+  const handleFinish = () => {
+    toast.success("Profile setup complete!")
     router.push("/profile")
+  }
+
+  if (isFetching) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-8 h-8 border-4 border-foreground border-t-[#FFD600] rounded-full animate-spin" />
+      </div>
+    )
   }
 
   return (
@@ -170,29 +134,33 @@ export default function SetupPage() {
       <div className="absolute top-[20%] right-[15%] w-16 h-16 rotate-[45deg] border-[2px] border-foreground bg-[#FF3CAC] pointer-events-none" />
 
       <div className="w-full max-w-2xl bg-card border-[3px] border-foreground shadow-[8px_8px_0px_black] rounded-[32px] p-8 md:p-12 relative z-10">
-        <div className="absolute top-8 right-8">
+        {/* Header row: role badge left, skip button right — wraps safely on mobile */}
+        <div className="flex items-center justify-between gap-3 mb-6 flex-wrap">
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] font-mono text-[10px] font-bold shadow-[2px_2px_0px_black] uppercase">
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>{userRole}</span>
+          </div>
           <button
             onClick={handleSkip}
             type="button"
-            className="px-4 py-2 flex items-center justify-center gap-2 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
+            className="px-4 py-2 flex items-center justify-center gap-1.5 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[13px] text-foreground hover:bg-background hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all whitespace-nowrap"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
+            Do it later →
           </button>
         </div>
 
         <div className="mb-8">
-          <h1 className="font-heading font-extrabold text-[36px] text-foreground mb-2 leading-none">
-            Build your Profile
+          <h1 className="font-heading font-extrabold text-[32px] text-foreground leading-tight mb-1">
+            Faculty Profile
           </h1>
-          <p className="font-sans text-[16px] text-muted-foreground">
-            Let your campus know who you are.
+          <p className="font-sans text-[15px] text-muted-foreground">
+            Configure how your designation and name appear across the portal.
           </p>
         </div>
 
         {/* Step Indicator */}
         <div className="flex gap-2 mb-8">
-          {[1, 2, 3].map((i) => (
+          {[1, 2].map((i) => (
             <div
               key={i}
               className={`h-3 w-12 rounded-full border-[2px] border-foreground transition-colors duration-300 ${
@@ -202,7 +170,7 @@ export default function SetupPage() {
           ))}
         </div>
 
-        <div className="min-h-[260px] relative">
+        <div className="min-h-[280px] relative">
           <AnimatePresence mode="wait" custom={direction}>
             <motion.div
               key={step}
@@ -217,32 +185,34 @@ export default function SetupPage() {
               {step === 1 && (
                 <div className="space-y-6">
                   <div className="space-y-2">
-                    <Label htmlFor="college">College / University</Label>
-                    <Input
-                      id="college"
-                      placeholder="e.g. Oxford University"
-                      onKeyDown={handleKeyDown}
-                      {...form.register("college")}
-                      className={form.formState.errors.college ? "border-[#FF3B30]" : ""}
-                    />
-                    {form.formState.errors.college && (
-                      <p className="font-sans text-[14px] text-[#FF3B30]">
-                        {form.formState.errors.college.message}
-                      </p>
-                    )}
+                    <Label htmlFor="title">Title (Optional)</Label>
+                    <select
+                      id="title"
+                      {...form.register("title")}
+                      className="w-full px-3.5 py-2.5 rounded-[12px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600] shadow-[2px_2px_0px_black]"
+                    >
+                      <option value="">None (No Title)</option>
+                      <option value="Prof.">Prof.</option>
+                      <option value="Dr.">Dr.</option>
+                    </select>
+                    <p className="font-sans text-[12px] text-muted-foreground">
+                      Select &quot;None&quot; if you prefer your name without an academic prefix.
+                    </p>
                   </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="stream">Stream / Department</Label>
+                    <Label htmlFor="name">Full Name</Label>
                     <Input
-                      id="stream"
-                      placeholder="e.g. Computer Science"
-                      onKeyDown={handleKeyDown}
-                      {...form.register("stream")}
-                      className={form.formState.errors.stream ? "border-[#FF3B30]" : ""}
+                      id="name"
+                      placeholder="e.g. Bhavesh Best"
+                      {...form.register("name")}
+                      className={`rounded-[12px] border-[2px] border-foreground shadow-[2px_2px_0px_black] ${
+                        form.formState.errors.name ? "border-[#FF3B30]" : ""
+                      }`}
                     />
-                    {form.formState.errors.stream && (
-                      <p className="font-sans text-[14px] text-[#FF3B30]">
-                        {form.formState.errors.stream.message}
+                    {form.formState.errors.name && (
+                      <p className="font-sans text-[13px] text-[#FF3B30]">
+                        {form.formState.errors.name.message}
                       </p>
                     )}
                   </div>
@@ -251,79 +221,19 @@ export default function SetupPage() {
 
               {step === 2 && (
                 <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="course">Course</Label>
-                    <Input
-                      id="course"
-                      placeholder="e.g. B.Tech / MSc"
-                      onKeyDown={handleKeyDown}
-                      {...form.register("course")}
-                      className={form.formState.errors.course ? "border-[#FF3B30]" : ""}
-                    />
-                    {form.formState.errors.course && (
-                      <p className="font-sans text-[14px] text-[#FF3B30]">
-                        {form.formState.errors.course.message}
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="year">Year of Study</Label>
-                    <Input
-                      id="year"
-                      placeholder="e.g. 1st Year / Senior"
-                      onKeyDown={handleKeyDown}
-                      {...form.register("year")}
-                      className={form.formState.errors.year ? "border-[#FF3B30]" : ""}
-                    />
-                    {form.formState.errors.year && (
-                      <p className="font-sans text-[14px] text-[#FF3B30]">
-                        {form.formState.errors.year.message}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="tags">Interest Tags</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="tags"
-                        placeholder="e.g. Machine Learning"
-                        value={currentTag}
-                        onChange={(e) => setCurrentTag(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                      />
-                      <Button type="button" onClick={handleAddTag} className="px-4 shrink-0">
-                        <Plus className="w-5 h-5" />
-                      </Button>
+                  <div className="flex flex-col items-center justify-center text-center py-8">
+                    <div className="w-20 h-20 rounded-[20px] border-[3px] border-foreground bg-[#0057FF]/10 flex items-center justify-center mb-6 shadow-[4px_4px_0px_black]">
+                      <Users className="w-10 h-10 text-[#0057FF]" />
                     </div>
-                    <p className="font-sans text-[12px] text-muted-foreground/70 mt-1">
-                      Press enter or click '+' to add to your interests.
+                    <h2 className="font-heading font-extrabold text-[24px] text-foreground mb-2">
+                      Your Groups
+                    </h2>
+                    <p className="font-sans text-[15px] text-muted-foreground max-w-sm">
+                      This section will show the communities and modules you&apos;re part of. Coming soon!
                     </p>
-                  </div>
-                  
-                  <div className="flex flex-wrap gap-2 mt-4">
-                    {formTags.map((tag) => (
-                      <div
-                        key={tag}
-                        className="bg-[#FFD600] border-[1.5px] border-foreground shadow-[3px_3px_0px_black] px-3 py-1.5 rounded-full flex items-center gap-1"
-                      >
-                        <span className="font-mono text-[12px] font-medium leading-none mt-[2px]">{tag}</span>
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="hover:bg-foreground/10 rounded-full p-0.5 transition-colors"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                    {formTags.length === 0 && (
-                      <p className="font-sans text-[14px] text-muted-foreground italic">No tags added yet.</p>
-                    )}
+                    <div className="mt-6 px-4 py-2 rounded-[12px] border-[2px] border-dashed border-border bg-muted/50">
+                      <span className="font-mono text-[12px] text-muted-foreground/70">🚧 Under Construction</span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -333,8 +243,8 @@ export default function SetupPage() {
 
         <div className="mt-12 flex justify-between items-center pt-6 border-t-[2px] border-border">
           {step > 1 ? (
-            <button 
-              onClick={handleBack} 
+            <button
+              onClick={handleBack}
               type="button"
               className="px-5 py-2.5 flex items-center justify-center gap-2 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
             >
@@ -345,15 +255,16 @@ export default function SetupPage() {
             <div /> // Spacer
           )}
 
-          {step < 3 ? (
+          {step < 2 ? (
             <Button onClick={handleNext} type="button">
               Next Step
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button onClick={form.handleSubmit(onSubmit)} disabled={isLoading}>
+            <Button onClick={handleFinish} disabled={isLoading}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Complete Profile
+              <Check className="mr-1 h-4 w-4" />
+              Complete Setup
             </Button>
           )}
         </div>

@@ -41,7 +41,7 @@ export function getFriendlyAuthErrorMessage(error: string | null | undefined): s
   }
 
   if (lower.includes("invalid login credentials")) {
-    return "Invalid email or password. Please try again."
+    return "Invalid email or password. If you haven't created an account yet, please sign up first."
   }
 
   if (lower.includes("email not confirmed")) {

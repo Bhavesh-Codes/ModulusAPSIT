@@ -81,6 +81,7 @@ export async function createModule(data: CreateModuleData) {
     .single()
 
   revalidatePath("/modules")
+  revalidatePath("/groups")
   return updatedModule || module_
 }
 
@@ -107,7 +108,9 @@ export async function joinModule(moduleId: string) {
   if (role === "peer") await syncMemberCount(supabase, moduleId)
 
   revalidatePath(`/modules/${moduleId}`)
+  revalidatePath(`/groups/${moduleId}`)
   revalidatePath("/modules")
+  revalidatePath("/groups")
   return { success: true, role }
 }
 
@@ -126,7 +129,9 @@ export async function leaveModule(moduleId: string) {
   await syncMemberCount(supabase, moduleId)
 
   revalidatePath(`/modules/${moduleId}`)
+  revalidatePath(`/groups/${moduleId}`)
   revalidatePath("/modules")
+  revalidatePath("/groups")
   return { success: true }
 }
 
@@ -147,6 +152,7 @@ export async function deleteModule(moduleId: string) {
 
   // Assume cascading deletes are handled in DB as stated
   revalidatePath("/modules")
+  revalidatePath("/groups")
   return { success: true }
 }
 
@@ -176,6 +182,7 @@ export async function updateModuleDetails(moduleId: string, data: UpdateModuleDe
   }
 
   revalidatePath(`/modules/${moduleId}`)
+  revalidatePath(`/groups/${moduleId}`)
   return { success: true }
 }
 
@@ -269,6 +276,7 @@ export async function updateMemberRole(moduleId: string, userId: string, newRole
   }
 
   revalidatePath(`/modules/${moduleId}`)
+  revalidatePath(`/groups/${moduleId}`)
   return { success: true }
 }
 
@@ -305,5 +313,6 @@ export async function removeMember(moduleId: string, userId: string) {
   await syncMemberCount(supabase, moduleId)
 
   revalidatePath(`/modules/${moduleId}`)
+  revalidatePath(`/groups/${moduleId}`)
   return { success: true }
 }

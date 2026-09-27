@@ -36,10 +36,28 @@ export async function GET(request: Request) {
     memberships.forEach(m => membershipMap.set(m.community_id, m.role))
   }
 
-  const enhancedCommunities = communities.map((c: any) => ({
-    ...c,
-    membership: membershipMap.has(c.id) ? { role: membershipMap.get(c.id) } : null
-  }))
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const systemRole = userProfile?.role || 'faculty'
+  const isGlobalViewer = systemRole.toLowerCase() === 'hod' || systemRole.toLowerCase() === 'dev'
+
+  const enhancedCommunities = communities.map((c: any) => {
+    let activeRole = membershipMap.has(c.id) ? membershipMap.get(c.id) : null
+    
+    // Give global viewers mock access if they don't have active membership
+    if (isGlobalViewer && (!activeRole || activeRole === 'pending')) {
+      activeRole = 'peer'
+    }
+
+    return {
+      ...c,
+      membership: activeRole ? { role: activeRole } : null
+    }
+  })
 
   return NextResponse.json(enhancedCommunities)
 }

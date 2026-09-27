@@ -64,7 +64,7 @@ export default function ExplorePage() {
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
           <Input
             type="search"
-            placeholder="Search communities..."
+            placeholder="Search groups..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-12 h-14 border-[3px] border-foreground rounded-[1rem] shadow-[4px_4px_0px_black] font-sans text-[16px] focus-visible:ring-0 focus-visible:shadow-[6px_6px_0px_black] transition-all bg-card"
@@ -75,7 +75,7 @@ export default function ExplorePage() {
           className="shrink-0 h-14 px-6 md:px-8 rounded-[1rem] border-[3px] border-foreground bg-[#FFD600] shadow-[6px_6px_0px_black] font-heading font-bold text-[16px] text-foreground hover:translate-x-[6px] hover:translate-y-[6px] hover:shadow-none transition-all flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          Create Community
+          Create Group
         </button>
       </div>
 
@@ -89,7 +89,7 @@ export default function ExplorePage() {
           <div className="w-20 h-20 mx-auto rounded-[24px] border-[3px] border-foreground bg-background flex items-center justify-center -rotate-6 shadow-[6px_6px_0px_black]">
             <Search className="w-10 h-10 text-foreground" />
           </div>
-          <h2 className="font-heading font-extrabold text-[28px] text-foreground mt-6">No communities found</h2>
+          <h2 className="font-heading font-extrabold text-[28px] text-foreground mt-6">No groups found</h2>
           <p className="font-sans text-[16px] text-muted-foreground">Try adjusting your search or create a new one.</p>
         </div>
       ) : (
@@ -105,7 +105,7 @@ export default function ExplorePage() {
                   <section className="space-y-6">
                     <h2 className="font-heading font-extrabold text-[24px] text-foreground flex items-center gap-2">
                       <div className="w-4 h-4 rounded-[4px] bg-[#0057FF] border-[1.5px] border-foreground shadow-[1px_1px_0px_black]" />
-                      Owned Communities
+                      Owned Groups
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {ownedCommunities.map((c, i) => (
@@ -119,7 +119,7 @@ export default function ExplorePage() {
                   <section className="space-y-6">
                     <h2 className="font-heading font-extrabold text-[24px] text-foreground flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full bg-[#FFD600] border-[1.5px] border-foreground shadow-[1px_1px_0px_black]" />
-                      Joined Communities
+                      Joined Groups
                     </h2>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                       {joinedCommunities.map((c, i) => (
@@ -159,7 +159,7 @@ export default function ExplorePage() {
 
 function CommunityCard({ community, index }: { community: Community, index: number }) {
   return (
-    <Link href={`/modules/${community.id}`} className="block h-full">
+    <Link href={`/groups/${community.id}`} className="block h-full">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -251,15 +251,15 @@ function CreateCommunityModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
 
   const onSubmit = async (values: CreateCommunityValues) => {
     setIsCreating(true)
-    const toastId = toast.loading("Creating community...")
+    const toastId = toast.loading("Creating group...")
     try {
       await createModule(values)
-      toast.success("Community created!", { id: toastId })
+      toast.success("Group created!", { id: toastId })
       queryClient.invalidateQueries({ queryKey: ["communities"] })
       reset()
       onClose()
     } catch (e: any) {
-      toast.error(e.message || "Failed to create community", { id: toastId })
+      toast.error(e.message || "Failed to create group", { id: toastId })
     } finally {
       setIsCreating(false)
     }
@@ -275,18 +275,18 @@ function CreateCommunityModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
       <DialogContent className="bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_black] max-w-md p-8">
         <DialogHeader>
           <DialogTitle className="font-heading font-extrabold text-[24px] text-foreground">
-            Create a Community
+            Create a Group
           </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 mt-4">
           <div className="space-y-2">
             <Label className="font-mono text-[12px] text-muted-foreground uppercase tracking-wider font-bold">
-              Community Name
+              Group Name
             </Label>
             <Input
               {...register("name")}
-              placeholder="e.g. CS101 Study Group"
+              placeholder="e.g. CS101 Faculty Group"
               className={`border-[2px] ${errors.name ? 'border-[#FF3B30]' : 'border-foreground'} rounded-[0.75rem] font-sans text-[15px] h-12 shadow-[2px_2px_0px_black] focus-visible:ring-0 focus-visible:border-foreground`}
             />
             {errors.name && <p className="font-sans text-[12px] text-[#FF3B30] mt-1 font-medium">{errors.name.message}</p>}
@@ -298,7 +298,7 @@ function CreateCommunityModal({ isOpen, onClose }: { isOpen: boolean, onClose: (
             </Label>
             <Input
               {...register("description")}
-              placeholder="What is this community about?"
+              placeholder="What is this group about?"
               className={`border-[2px] ${errors.description ? 'border-[#FF3B30]' : 'border-foreground'} rounded-[0.75rem] font-sans text-[15px] h-12 shadow-[2px_2px_0px_black] focus-visible:ring-0 focus-visible:border-foreground`}
             />
             {errors.description && <p className="font-sans text-[12px] text-[#FF3B30] mt-1 font-medium">{errors.description.message}</p>}

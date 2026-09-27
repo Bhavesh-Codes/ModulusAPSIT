@@ -3,7 +3,7 @@
 import { ReactNode } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Boxes } from "lucide-react"
+import { FolderArchive, Users } from "lucide-react"
 import { Toaster } from "@/components/ui/sonner"
 import UserMenu from "@/components/user-menu"
 import { VaultWindowManager } from "@/components/vault/VaultWindowManager"
@@ -20,10 +20,29 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           </Link>
         </div>
 
-        <nav className="flex items-center gap-3 sm:gap-6">
-          <Link href="/modules" title="Modules" aria-label="Modules" className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${pathname.startsWith('/modules') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'}`}>
-            <Boxes className="w-5 h-5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Modules</span>
+        <nav className="flex items-center gap-4 sm:gap-6">
+          <Link
+            href="/groups"
+            title="Groups"
+            aria-label="Groups"
+            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${
+              pathname.startsWith('/groups') || pathname.startsWith('/group') || pathname.startsWith('/modules') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
+            }`}
+          >
+            <Users className="w-5 h-5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Groups</span>
+          </Link>
+
+          <Link
+            href="/vault"
+            title="Vault"
+            aria-label="Vault"
+            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${
+              pathname.startsWith('/vault') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
+            }`}
+          >
+            <FolderArchive className="w-5 h-5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Vault</span>
           </Link>
           <UserMenu />
         </nav>

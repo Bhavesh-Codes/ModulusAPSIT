@@ -31,7 +31,7 @@ const TOPNAV_HEIGHT = 64 // px — must match global nav bar height
 
 function getNavLinks(id: string) {
   return [
-    { label: "Vault", href: `/modules/${id}/vault`, icon: FolderSync },
+    { label: "Vault", href: `/groups/${id}/vault`, icon: FolderSync },
   ]
 }
 
@@ -261,9 +261,9 @@ function CommunityHeader({
       >
         {/* Back link */}
         <Link
-          href={`/modules/${id}`}
+          href={`/groups/${id}`}
           className="px-3 py-1.5 flex items-center justify-center gap-1.5 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all shrink-0"
-          title="Back to module home"
+          title="Back to group home"
         >
           <ArrowLeft className="w-4 h-4" />
           <span className="hidden md:inline">Back</span>
@@ -361,14 +361,14 @@ function CommunityHeader({
           </h1>
         )}
 
-        {/* Back to Modules button — overlaid top-left */}
+        {/* Back to Groups button — overlaid top-left */}
         <Link
-          href="/modules"
+          href="/groups"
           className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-[0.875rem] border-[2px] border-[#0A0A0A] bg-[#FFFFFF] shadow-[3px_3px_0px_#0A0A0A] font-heading font-bold text-[13px] text-[#0A0A0A] hover:bg-[#FFD600] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
-          title="Back to Modules"
+          title="Back to Groups"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Modules</span>
+          <span className="hidden sm:inline">Groups</span>
         </Link>
       </div>
 
@@ -474,7 +474,7 @@ function CommunityHeader({
               ) : (
                 <UserMinus className="w-5 h-5" />
               )}
-              Leave Module
+              Leave Group
             </button>
           ) : (
             <button
@@ -487,7 +487,7 @@ function CommunityHeader({
               ) : (
                 <UserPlus className="w-5 h-5" />
               )}
-              {community.type === "Private" ? "Request to Join" : "Join Module"}
+              {community.type === "Private" ? "Request to Join" : "Join Group"}
             </button>
           )}
 
@@ -546,13 +546,13 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
     return (
       <div className="p-8 text-center mt-20">
         <h2 className="font-heading font-extrabold text-[28px] text-foreground">
-          Module Not Found
+          Group Not Found
         </h2>
         <Link
-          href="/modules"
+          href="/groups"
           className="px-5 py-2.5 mt-4 inline-flex items-center justify-center gap-2 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
         >
-          <ArrowLeft className="w-4 h-4" /> Go back to Modules
+          <ArrowLeft className="w-4 h-4" /> Go back to Groups
         </Link>
       </div>
     )
@@ -563,9 +563,9 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   const isPending = role === "pending"
   const isMember = role === "owner" || role === "curator" || role === "peer"
 
-  // Detect sub-page: pathname is longer than "/modules/[id]"
-  const moduleRoot = `/modules/${id}`
-  const isSubPage = pathname !== moduleRoot && !pathname.endsWith(`/modules/${id}`)
+  // Detect sub-page: pathname is longer than "/groups/[id]"
+  const groupRoot = `/groups/${id}`
+  const isSubPage = pathname !== groupRoot && !pathname.endsWith(`/groups/${id}`) && pathname !== `/modules/${id}` && !pathname.endsWith(`/modules/${id}`)
 
   // Sidebar width for content area right-padding (desktop only)
   const sidebarWidth = isMember

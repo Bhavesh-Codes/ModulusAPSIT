@@ -10,6 +10,26 @@ const nextConfig: NextConfig = {
         destination: "/vault",
         permanent: true,
       },
+      {
+        source: "/modules",
+        destination: "/groups",
+        permanent: true,
+      },
+      {
+        source: "/modules/:path*",
+        destination: "/groups/:path*",
+        permanent: true,
+      },
+      {
+        source: "/group",
+        destination: "/groups",
+        permanent: true,
+      },
+      {
+        source: "/group/:path*",
+        destination: "/groups/:path*",
+        permanent: true,
+      },
     ];
   },
 };

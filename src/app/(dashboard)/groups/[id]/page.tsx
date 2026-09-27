@@ -12,21 +12,21 @@ import {
   Info
 } from "lucide-react"
 
-export default function ModuleHomePage() {
+export default function GroupHomePage() {
   const params = useParams()
   const id = params.id as string
 
-  // Fetch community details
+  // Fetch group details
   const { data: community } = useQuery({
     queryKey: ["community", id],
     queryFn: async () => {
       const res = await fetch(`/api/communities/${id}`)
-      if (!res.ok) throw new Error("Failed to fetch community")
+      if (!res.ok) throw new Error("Failed to fetch group")
       return res.json()
     },
   })
 
-  // Fetch community vault items
+  // Fetch group vault items
   const { data: vaultResponse, isLoading: vaultLoading } = useQuery({
     queryKey: ["communityVaultItems", id],
     queryFn: async () => {
@@ -60,17 +60,17 @@ export default function ModuleHomePage() {
 
             <div>
               <h2 className="font-heading font-extrabold text-[24px] text-foreground">
-                Community Vault
+                Group Vault
               </h2>
               <p className="font-sans text-[15px] text-muted-foreground mt-1 max-w-lg">
-                Collaborative file depository for lecture notes, reference PDFs, past papers, and useful links curated by community members.
+                Collaborative file depository for lecture notes, reference PDFs, past papers, and useful links curated by group members.
               </p>
             </div>
           </div>
 
           <div className="pt-6 relative z-10">
             <Link
-              href={`/modules/${id}/vault`}
+              href={`/groups/${id}/vault`}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-[1rem] border-[3px] border-foreground bg-[#FFD600] shadow-[4px_4px_0px_black] font-heading font-bold text-[15px] text-foreground hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
             >
               <span>Explore Vault</span>
@@ -79,7 +79,7 @@ export default function ModuleHomePage() {
           </div>
         </div>
 
-        {/* Community Info Card */}
+        {/* Group Info Card */}
         <div className="bg-card border-[3px] border-foreground rounded-[1.5rem] p-6 shadow-[6px_6px_0px_black] flex flex-col justify-between space-y-4">
           <div>
             <div className="flex items-center gap-2 mb-3">
@@ -87,7 +87,7 @@ export default function ModuleHomePage() {
                 <Info className="w-4 h-4 text-foreground" />
               </div>
               <h3 className="font-heading font-bold text-[18px] text-foreground">
-                About Module
+                About Group
               </h3>
             </div>
             
@@ -111,7 +111,7 @@ export default function ModuleHomePage() {
 
           {!isMember && (
             <div className="p-3 bg-[#FFD600]/20 border-[2px] border-foreground rounded-[12px] text-[13px] font-medium text-foreground">
-              👉 Click <strong>Join Module</strong> above to get full access to shared resources.
+              👉 Click <strong>Join Group</strong> above to get full access to shared resources.
             </div>
           )}
         </div>
@@ -127,7 +127,7 @@ export default function ModuleHomePage() {
             </h3>
           </div>
           <Link
-            href={`/modules/${id}/vault`}
+            href={`/groups/${id}/vault`}
             className="font-heading font-bold text-[13px] text-foreground hover:underline flex items-center gap-1"
           >
             View all <ArrowRight className="w-3.5 h-3.5" />
@@ -140,14 +140,14 @@ export default function ModuleHomePage() {
           </div>
         ) : vaultItems.length === 0 ? (
           <div className="py-8 text-center text-muted-foreground font-sans text-[14px] bg-background border-[2px] border-dashed border-border rounded-[1rem]">
-            No resources shared in this module yet. Be the first to share from your vault!
+            No resources shared in this group yet. Be the first to share from your vault!
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {vaultItems.slice(0, 6).map((item: any) => {
               const isLink = item.vault_items?.item_type === "link"
               const title = item.vault_items?.title || item.vault_items?.files?.filename || "Untitled"
-              const sharedBy = item.users?.name || "Community Member"
+              const sharedBy = item.users?.name || "Group Member"
 
               return (
                 <div
@@ -177,7 +177,7 @@ export default function ModuleHomePage() {
                       {isLink ? "Link" : "File"}
                     </span>
                     <Link
-                      href={`/modules/${id}/vault`}
+                      href={`/groups/${id}/vault`}
                       className="font-heading font-bold text-[12px] text-foreground hover:underline flex items-center gap-1"
                     >
                       Open <ArrowRight className="w-3 h-3" />

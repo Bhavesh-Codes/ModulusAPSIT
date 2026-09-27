@@ -28,8 +28,23 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     .eq('user_id', user.id)
     .maybeSingle()
 
+  const { data: userProfile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle()
+
+  const systemRole = userProfile?.role || 'faculty'
+  const isGlobalViewer = systemRole.toLowerCase() === 'hod' || systemRole.toLowerCase() === 'dev'
+
+  // Give global viewers a mock 'peer' membership if they don't have one, or if they are pending.
+  let activeMembership = memberData ? { role: memberData.role } : null
+  if (isGlobalViewer && (!activeMembership || activeMembership.role === 'pending')) {
+    activeMembership = { role: 'peer' }
+  }
+
   return NextResponse.json({
     ...community,
-    membership: memberData ? { role: memberData.role } : null
+    membership: activeMembership
   })
 }

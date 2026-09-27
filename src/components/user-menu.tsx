@@ -6,11 +6,13 @@ import { createClient } from "@/lib/supabase/client"
 import { logout } from "@/actions/auth"
 import { LogOut, Settings, User } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
+import { getDisplayRole } from "@/lib/roles"
 
 interface UserProfile {
   name: string | null
   email: string | null
-  college: string | null
+  title: string | null
+  role: string | null
   profile_pic?: string | null
 }
 
@@ -32,14 +34,15 @@ export default function UserMenu() {
       if (user) {
         const { data } = await supabase
           .from("users")
-          .select("name, college, profile_pic")
+          .select("name, title, role, profile_pic")
           .eq("id", user.id)
           .maybeSingle()
 
         setProfile({
           name: data?.name ?? user.user_metadata?.full_name ?? null,
           email: user.email ?? null,
-          college: data?.college ?? null,
+          title: data?.title ?? null,
+          role: data?.role ?? null,
           profile_pic: data?.profile_pic ?? null,
         })
       }
@@ -113,15 +116,15 @@ export default function UserMenu() {
             {/* Profile Summary */}
             <div className="px-4 py-3 border-b-[2px] border-border bg-background">
               <p className="font-heading font-bold text-[14px] text-foreground truncate">
-                {profile?.name ?? "Loading…"}
+                {profile?.name ? `${profile.title ? `${profile.title} ` : ""}${profile.name}` : "Loading…"}
               </p>
               <p className="font-mono text-[11px] text-muted-foreground truncate mt-0.5">
                 {profile?.email ?? ""}
               </p>
-              {profile?.college && (
-                <p className="font-mono text-[11px] text-muted-foreground/70 truncate">
-                  {profile.college}
-                </p>
+              {profile?.role && (
+                <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-[6px] border-[1.5px] border-foreground bg-[#FFD600] font-mono text-[10px] font-bold shadow-[1.5px_1.5px_0px_black] text-foreground uppercase tracking-wider">
+                  {getDisplayRole(profile.role)}
+                </div>
               )}
             </div>
 

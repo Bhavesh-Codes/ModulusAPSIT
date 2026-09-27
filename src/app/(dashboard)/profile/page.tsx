@@ -4,8 +4,9 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { motion } from "framer-motion"
-import { FileText, Link as LinkIcon, Users, Building, Edit2, Check, X, Plus, Clock, Camera, Loader2 } from "lucide-react"
+import { FileText, Link as LinkIcon, Users, Building, Edit2, Check, X, Clock, Camera, Loader2 } from "lucide-react"
 import { toast } from "sonner"
+import { getDisplayRole } from "@/lib/roles"
 
 // Types
 interface ProfileStats {
@@ -20,11 +21,8 @@ interface UserProfile {
   id: string
   name: string
   email: string
-  college: string
-  stream: string
-  course: string
-  year: string
-  tags: string[]
+  title: string | null
+  role: string | null
   profile_pic: string | null
 }
 
@@ -32,7 +30,6 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({})
-  const [currentTag, setCurrentTag] = useState("")
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const supabase = createClient()
   const queryClient = useQueryClient()
@@ -111,11 +108,8 @@ export default function ProfilePage() {
           id: user.id,
           name: userRecord.name || user.user_metadata?.full_name || user.user_metadata?.name || "User",
           email: user.email || userRecord.email || "",
-          college: userRecord.college || "",
-          stream: userRecord.stream || "",
-          course: userRecord.course || "",
-          year: userRecord.year || "",
-          tags: userRecord.tags || [],
+          title: userRecord.title || null,
+          role: userRecord.role || "faculty",
           profile_pic: userRecord.profile_pic || null,
         }
 
@@ -132,25 +126,29 @@ export default function ProfilePage() {
   const updateProfileMutation = useMutation({
     mutationFn: async (updates: Partial<UserProfile>) => {
       if (!profile?.id) throw new Error("No user ID")
+      
+      const cleanTitle = updates.title && updates.title.trim() !== "" ? updates.title.trim() : null
+      const cleanName = updates.name && updates.name.trim() !== "" ? updates.name.trim() : profile.name
+
       const { error } = await supabase
         .from("users")
         .update({
-          name: updates.name,
-          college: updates.college,
-          stream: updates.stream,
-          course: updates.course,
-          year: updates.year,
-          tags: updates.tags,
+          name: cleanName,
+          title: cleanTitle,
         })
         .eq("id", profile.id)
 
       if (error) throw error
-      return updates
+      return { name: cleanName, title: cleanTitle }
     },
     onSuccess: (updatedData) => {
       setProfile((prev) => prev ? { ...prev, ...updatedData } : null)
       setIsEditing(false)
+      toast.success("Profile updated successfully!")
     },
+    onError: (err: any) => {
+      toast.error(err.message || "Failed to update profile")
+    }
   })
 
   const handleSave = () => {
@@ -160,31 +158,6 @@ export default function ProfilePage() {
   const handleCancel = () => {
     setEditForm(profile || {})
     setIsEditing(false)
-    setCurrentTag("")
-  }
-
-  const handleAddTag = (e: React.MouseEvent | React.KeyboardEvent) => {
-    e.preventDefault()
-    if (!currentTag.trim()) return
-    const tags = editForm.tags || []
-    if (!tags.includes(currentTag.trim())) {
-      setEditForm({ ...editForm, tags: [...tags, currentTag.trim()] })
-    }
-    setCurrentTag("")
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
-      e.preventDefault()
-      handleAddTag(e)
-    }
-  }
-
-  const removeTag = (tagToRemove: string) => {
-    setEditForm({
-      ...editForm,
-      tags: (editForm.tags || []).filter((t) => t !== tagToRemove)
-    })
   }
 
   if (!profile) {
@@ -200,220 +173,146 @@ export default function ProfilePage() {
     : "ME"
 
   return (
-    <div className="p-6 lg:p-12 max-w-7xl mx-auto">
-      <div className="mb-10">
-        <h1 className="font-heading font-extrabold text-[36px] md:text-[48px] text-foreground tracking-tight uppercase leading-none">
+    <div className="h-full max-w-7xl mx-auto p-6 lg:p-8 flex flex-col box-border">
+      <div className="shrink-0 mb-6">
+        <h1 className="font-heading font-extrabold text-[32px] md:text-[40px] text-foreground tracking-tight uppercase leading-none">
           Your Profile
         </h1>
-        <p className="font-sans font-medium text-[16px] text-muted-foreground mt-2">
+        <p className="font-sans font-medium text-[15px] text-muted-foreground mt-1.5">
           Manage your personal details and view your activity.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 relative z-10">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 pb-2 relative z-10">
         
         {/* LEFT PANEL - Identity Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="lg:col-span-5 flex flex-col gap-6"
+          className="lg:col-span-4 h-full flex flex-col"
         >
-          <div className="bg-card border-[3px] border-foreground rounded-[24px] shadow-[6px_6px_0px_black] p-8 overflow-hidden relative">
+          <div className="bg-card border-[3px] border-foreground rounded-[24px] shadow-[6px_6px_0px_black] p-6 lg:p-7 overflow-hidden relative flex-1 flex flex-col justify-between">
             {/* Decorative bg shapes */}
-            <div className="absolute top-[-20%] right-[-10%] w-32 h-32 rounded-full border-[2px] border-foreground bg-[#FFD600]/20 pointer-events-none" />
+            <div className="absolute top-[-20%] right-[-10%] w-36 h-36 rounded-full border-[2px] border-foreground bg-[#FFD600]/20 pointer-events-none" />
             
-            <div className="flex justify-between items-start mb-8 relative z-10">
-              <div className="relative group">
-                <div className="w-24 h-24 rounded-full border-[3px] border-foreground bg-[#FFD600] shadow-[4px_4px_0px_black] overflow-hidden flex items-center justify-center text-[36px] font-mono font-bold relative">
-                  {profile.profile_pic ? (
-                    <img src={profile.profile_pic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                  ) : (
-                    initials
-                  )}
-                  {isEditing && (
-                    <label className="absolute inset-0 bg-foreground/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-white text-[10px] font-bold">
-                      {isUploadingAvatar ? <Loader2 className="w-5 h-5 animate-spin" /> : (
-                        <>
-                          <Camera className="w-5 h-5 mb-1" />
-                          Change
-                        </>
-                      )}
-                      <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
-                    </label>
-                  )}
-                </div>
-              </div>
-              
-              {!isEditing ? (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="p-2.5 rounded-[12px] border-[2px] border-foreground bg-background hover:bg-[#FFD600] hover:shadow-[3px_3px_0px_black] hover:-translate-y-1 transition-all"
-                >
-                  <Edit2 className="w-4 h-4" />
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleCancel}
-                    className="p-2.5 rounded-[12px] border-[2px] border-foreground bg-[#FF3B30] text-white hover:bg-red-600 transition-all font-bold"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={handleSave}
-                    disabled={updateProfileMutation.isPending}
-                    className="px-4 py-2 flex items-center gap-2 rounded-[12px] border-[2px] border-foreground bg-[#0057FF] text-white hover:bg-blue-600 transition-all font-bold"
-                  >
-                    {updateProfileMutation.isPending ? "Saving..." : <><Check className="w-4 h-4" /> Save</>}
-                  </button>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-5 relative z-10">
-              <div>
-                <label className="text-[12px] font-bold text-muted-foreground/70 uppercase tracking-wider mb-1 block">Full Name</label>
-                {!isEditing ? (
-                  <p className="font-heading font-bold text-[24px] text-foreground leading-tight">{profile.name}</p>
-                ) : (
-                  <input
-                    type="text"
-                    value={editForm.name || ""}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full px-3 py-2 rounded-[8px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600] transition-shadow"
-                  />
-                )}
-                <p className="font-mono text-[14px] text-muted-foreground mt-1">{profile.email}</p>
-              </div>
-
-              <div className="h-[2px] bg-muted w-full my-6" />
-
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="text-[12px] font-bold text-muted-foreground/70 uppercase tracking-wider mb-1 block">College</label>
-                  {!isEditing ? (
-                    <p className="font-sans font-medium text-[16px] text-foreground">{profile.college || "Not set"}</p>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editForm.college || ""}
-                      onChange={(e) => setEditForm({ ...editForm, college: e.target.value })}
-                      className="w-full px-3 py-2 rounded-[8px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600]"
-                      placeholder="Your college"
-                    />
-                  )}
+            <div className="relative z-10">
+              <div className="flex justify-between items-start mb-5">
+                <div className="relative group">
+                  <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full border-[3.5px] border-foreground bg-[#FFD600] shadow-[4px_4px_0px_black] overflow-hidden flex items-center justify-center text-[34px] lg:text-[40px] font-mono font-bold relative">
+                    {profile.profile_pic ? (
+                      <img src={profile.profile_pic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      initials
+                    )}
+                    {isEditing && (
+                      <label className="absolute inset-0 bg-foreground/40 flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity text-white text-[11px] font-bold">
+                        {isUploadingAvatar ? <Loader2 className="w-6 h-6 animate-spin" /> : (
+                          <>
+                            <Camera className="w-6 h-6 mb-1" />
+                            Change
+                          </>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} disabled={isUploadingAvatar} />
+                      </label>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-[12px] font-bold text-muted-foreground/70 uppercase tracking-wider mb-1 block">Stream</label>
-                    {!isEditing ? (
-                      <p className="font-sans font-medium text-[16px] text-foreground">{profile.stream || "Not set"}</p>
-                    ) : (
-                      <input
-                        type="text"
-                        value={editForm.stream || ""}
-                        onChange={(e) => setEditForm({ ...editForm, stream: e.target.value })}
-                        className="w-full px-3 py-2 rounded-[8px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600]"
-                      />
-                    )}
-                  </div>
-                  <div>
-                    <label className="text-[12px] font-bold text-muted-foreground/70 uppercase tracking-wider mb-1 block">Course</label>
-                    {!isEditing ? (
-                      <p className="font-sans font-medium text-[16px] text-foreground">{profile.course || "Not set"}</p>
-                    ) : (
-                      <input
-                        type="text"
-                        value={editForm.course || ""}
-                        onChange={(e) => setEditForm({ ...editForm, course: e.target.value })}
-                        className="w-full px-3 py-2 rounded-[8px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600]"
-                      />
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-[12px] font-bold text-muted-foreground/70 uppercase tracking-wider mb-1 block">Year</label>
-                  {!isEditing ? (
-                    <p className="font-sans font-medium text-[16px] text-foreground">{profile.year || "Not set"}</p>
-                  ) : (
-                    <input
-                      type="text"
-                      value={editForm.year || ""}
-                      onChange={(e) => setEditForm({ ...editForm, year: e.target.value })}
-                      className="w-full px-3 py-2 rounded-[8px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600]"
-                    />
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Tags Section */}
-          <div className="bg-card border-[3px] border-foreground rounded-[24px] shadow-[4px_4px_0px_black] p-6">
-            <h3 className="font-heading font-bold text-[18px] mb-4">Interests</h3>
-            <div className="flex flex-wrap gap-2">
-              {(!isEditing ? profile.tags : editForm.tags)?.map((tag) => (
-                <div
-                  key={tag}
-                  className="bg-[#FFD600] border-[2px] border-foreground px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-[2px_2px_0px_black]"
-                >
-                  <span className="font-mono text-[13px] font-bold mt-0.5">{tag}</span>
-                  {isEditing && (
+                {!isEditing ? (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="p-3 rounded-[14px] border-[2px] border-foreground bg-background hover:bg-[#FFD600] hover:shadow-[3px_3px_0px_black] hover:-translate-y-1 transition-all"
+                    title="Edit Profile"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => removeTag(tag)}
-                      className="bg-foreground text-[#FFD600] rounded-full p-0.5 hover:scale-110 transition-transform"
+                      onClick={handleCancel}
+                      className="p-3 rounded-[14px] border-[2px] border-foreground bg-[#FF3B30] text-white hover:bg-red-600 transition-all font-bold"
+                      title="Cancel"
                     >
-                      <X className="w-3 h-3" />
+                      <X className="w-4 h-4" />
                     </button>
+                    <button
+                      onClick={handleSave}
+                      disabled={updateProfileMutation.isPending}
+                      className="px-4 py-2.5 flex items-center gap-2 rounded-[14px] border-[2px] border-foreground bg-[#0057FF] text-white hover:bg-blue-600 transition-all font-bold"
+                    >
+                      {updateProfileMutation.isPending ? "Saving..." : <><Check className="w-4 h-4" /> Save</>}
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[12px] font-extrabold text-muted-foreground/75 uppercase tracking-wider mb-1 block">
+                    {isEditing ? "Title & Full Name" : "Faculty Member"}
+                  </label>
+                  {!isEditing ? (
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <p className="font-heading font-extrabold text-[24px] lg:text-[28px] text-foreground leading-tight">
+                        {profile.title ? `${profile.title} ` : ""}{profile.name}
+                      </p>
+                      <span className="inline-flex items-center px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] font-mono text-[11px] font-bold shadow-[2px_2px_0px_black] text-foreground uppercase tracking-wider">
+                        {getDisplayRole(profile.role)}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex gap-2">
+                        <select
+                          value={editForm.title || ""}
+                          onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                          className="w-[120px] px-3 py-2 rounded-[10px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600]"
+                        >
+                          <option value="">No Title</option>
+                          <option value="Prof.">Prof.</option>
+                          <option value="Dr.">Dr.</option>
+                        </select>
+                        <input
+                          type="text"
+                          value={editForm.name || ""}
+                          onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                          placeholder="Full Name"
+                          className="flex-1 px-3 py-2 rounded-[10px] border-[2px] border-foreground bg-card font-sans font-medium focus:outline-none focus:ring-2 focus:ring-[#FFD600] transition-shadow"
+                        />
+                      </div>
+                      <div className="pt-1">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] font-mono text-[11px] font-bold shadow-[2px_2px_0px_black] text-foreground uppercase tracking-wider">
+                          {getDisplayRole(profile.role)}
+                        </span>
+                      </div>
+                    </div>
                   )}
+                  <p className="font-mono text-[14px] text-muted-foreground mt-2">{profile.email}</p>
                 </div>
-              ))}
-              {(!profile.tags?.length && !isEditing) && (
-                <p className="text-[14px] text-muted-foreground/70 italic">No interests added yet.</p>
-              )}
+              </div>
             </div>
 
-            {isEditing && (
-              <div className="mt-4 flex gap-2">
-                <input
-                  type="text"
-                  placeholder="Add a new interest..."
-                  value={currentTag}
-                  onChange={(e) => setCurrentTag(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  className="flex-1 px-3 py-2 rounded-[8px] border-[2px] border-foreground bg-card font-sans focus:outline-none focus:ring-2 focus:ring-[#FFD600]"
-                />
-                <button
-                  onClick={handleAddTag}
-                  className="px-4 py-2 bg-[#0057FF] text-white border-[2px] border-foreground rounded-[8px] font-bold hover:shadow-[3px_3px_0px_black] hover:-translate-y-1 transition-all"
-                >
-                  <Plus className="w-5 h-5" />
-                </button>
-              </div>
-            )}
+            <div className="my-4 border-t-[2px] border-dashed border-border/80 relative z-10" />
+
+            {/* Enriched Stats inside identity card */}
+            <div className="grid grid-cols-2 gap-3 relative z-10">
+              <MiniStatCard icon={<FileText className="w-4 h-4" />} value={stats?.vaultFileCount} label="Vault Files" color="bg-[#FF3CAC]" />
+              <MiniStatCard icon={<LinkIcon className="w-4 h-4" />} value={stats?.vaultLinkCount} label="Vault Links" color="bg-[#FFD600]" />
+              <MiniStatCard icon={<Users className="w-4 h-4" />} value={stats?.communitiesJoined} label="Joined Comm." color="bg-[#0057FF]" textColor="text-white" />
+              <MiniStatCard icon={<Building className="w-4 h-4" />} value={stats?.communitiesOwned} label="Owned Comm." color="bg-[#00D4FF]" />
+            </div>
           </div>
         </motion.div>
 
-        {/* RIGHT PANEL - Stats & Activity */}
+        {/* RIGHT PANEL - Full-height Recent Activity */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="lg:col-span-7 flex flex-col gap-6"
+          className="lg:col-span-8 h-full flex flex-col"
         >
-          {/* Quick Stats Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={<FileText />} value={stats?.vaultFileCount} label="Vault Files" color="bg-[#FF3CAC]" />
-            <StatCard icon={<LinkIcon />} value={stats?.vaultLinkCount} label="Vault Links" color="bg-[#FFD600]" />
-            <StatCard icon={<Users />} value={stats?.communitiesJoined} label="Joined Comm." color="bg-[#0057FF]" textColor="text-white" />
-            <StatCard icon={<Building />} value={stats?.communitiesOwned} label="Owned Comm." color="bg-[#00D4FF]" />
-          </div>
-
-          {/* Recent Activity */}
-          <div className="bg-card border-[3px] border-foreground rounded-[24px] shadow-[6px_6px_0px_black] p-8 flex-1">
-            <div className="flex items-center gap-3 mb-6 pb-4 border-b-[2px] border-border">
+          <div className="bg-card border-[3px] border-foreground rounded-[24px] shadow-[6px_6px_0px_black] p-6 lg:p-7 flex-1 flex flex-col min-h-0">
+            <div className="flex items-center gap-3 mb-5 pb-3 border-b-[2px] border-border shrink-0">
               <div className="p-2 bg-[#FFD600] rounded-lg border-[2px] border-foreground">
                 <Clock className="w-5 h-5" />
               </div>
@@ -427,7 +326,7 @@ export default function ProfilePage() {
                 ))}
               </div>
             ) : stats?.recentItems && stats.recentItems.length > 0 ? (
-              <div className="space-y-3">
+              <div className="space-y-3 overflow-y-auto pr-1 flex-1">
                 {stats.recentItems.map((item) => {
                   const displayName = item.item_type === "link" ? (item.title || "Untitled Link") : (item.files?.filename || item.title || "Unknown File")
                   const handleClick = async () => {
@@ -465,8 +364,8 @@ export default function ProfilePage() {
                 )})}
               </div>
             ) : (
-              <div className="text-center py-12 border-[2px] border-dashed border-border rounded-[16px]">
-                <FileText className="w-10 h-10 text-muted mx-auto mb-3" />
+              <div className="flex-1 flex flex-col items-center justify-center border-[2px] border-dashed border-border rounded-[16px] p-8">
+                <FileText className="w-12 h-12 text-muted mb-3" />
                 <p className="font-sans text-[15px] text-muted-foreground/70 font-medium">No recent items in your vault.</p>
               </div>
             )}
@@ -477,16 +376,20 @@ export default function ProfilePage() {
   )
 }
 
-function StatCard({ icon, value, label, color, textColor = "text-foreground" }: { icon: React.ReactNode, value?: number, label: string, color: string, textColor?: string }) {
+
+function MiniStatCard({ icon, value, label, color, textColor = "text-foreground" }: { icon: React.ReactNode, value?: number, label: string, color: string, textColor?: string }) {
   return (
-    <div className={`p-5 rounded-[20px] border-[3px] border-foreground shadow-[4px_4px_0px_black] flex flex-col justify-between h-32 ${color}`}>
-      <div className={`w-8 h-8 rounded-full bg-card/20 flex items-center justify-center border-[2px] border-foreground shadow-[2px_2px_0px_black] ${textColor}`}>
-        {icon}
+    <div className={`p-4 rounded-[18px] border-[2.5px] border-foreground shadow-[3px_3px_0px_black] flex flex-col justify-between h-24 lg:h-28 ${color}`}>
+      <div className="flex items-center justify-between">
+        <div className={`w-8 h-8 rounded-full bg-card/25 flex items-center justify-center border-[1.5px] border-foreground shadow-[1.5px_1.5px_0px_black] ${textColor}`}>
+          {icon}
+        </div>
+        <p className={`font-mono font-extrabold text-[24px] lg:text-[28px] leading-none ${textColor}`}>{value !== undefined ? value : "—"}</p>
       </div>
       <div>
-        <p className={`font-mono font-bold text-[28px] leading-none ${textColor}`}>{value !== undefined ? value : "—"}</p>
-        <p className={`font-sans font-bold text-[12px] uppercase tracking-wide mt-1 opacity-90 ${textColor}`}>{label}</p>
+        <p className={`font-sans font-extrabold text-[11px] lg:text-[12px] uppercase tracking-wide opacity-95 ${textColor}`}>{label}</p>
       </div>
     </div>
   )
 }
+
