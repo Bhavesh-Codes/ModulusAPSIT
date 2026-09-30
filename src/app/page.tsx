@@ -22,7 +22,7 @@ export default function HomePage() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.replace("/profile");
+        router.replace("/vault");
       } else {
         setIsInitializing(false);
       }

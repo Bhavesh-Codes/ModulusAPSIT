@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Eye, EyeOff, AlertCircle } from "lucide-react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { getFriendlyAuthErrorMessage, setAuthSource } from "@/lib/auth-errors"
 
 const loginSchema = z.object({
@@ -20,50 +20,55 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>
 
-export default function LoginPage() {
+function LoginFormContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [errorText, setErrorText] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const supabase = createClient()
+
+  const redirectTarget = searchParams.get("redirectTo") || "/vault"
+  const emailParam = searchParams.get("email") || ""
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: emailParam, password: "" },
   })
 
   useEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search)
-    const email = searchParams.get('email')
-    if (email) form.setValue("email", email)
+    if (emailParam) {
+      form.setValue("email", emailParam)
+    }
 
     // Check for auth errors returned from OAuth or redirect
-    const hashString = window.location.hash.startsWith('#')
+    const hashString = typeof window !== "undefined" && window.location.hash.startsWith("#")
       ? window.location.hash.substring(1)
-      : window.location.hash
+      : ""
     const hashParams = new URLSearchParams(hashString)
 
-    const err = searchParams.get('error') || hashParams.get('error')
-    const errDesc = searchParams.get('error_description') || hashParams.get('error_description')
+    const err = searchParams.get("error") || hashParams.get("error")
+    const errDesc = searchParams.get("error_description") || hashParams.get("error_description")
 
     if (err || errDesc) {
       const friendlyMsg = getFriendlyAuthErrorMessage(errDesc || err)
-      setTimeout(() => {
-        setErrorText(friendlyMsg)
-      }, 0)
+      setErrorText(friendlyMsg)
       // Clean up error params from the URL bar without reloading
-      searchParams.delete('error')
-      searchParams.delete('error_description')
-      searchParams.delete('error_code')
-      const newQuery = searchParams.toString()
-      const newUrl = window.location.pathname + (newQuery ? `?${newQuery}` : '')
-      window.history.replaceState({}, document.title, newUrl)
+      if (typeof window !== "undefined") {
+        const url = new URL(window.location.href)
+        url.searchParams.delete("error")
+        url.searchParams.delete("error_description")
+        url.searchParams.delete("error_code")
+        url.hash = ""
+        window.history.replaceState({}, document.title, url.pathname + (url.search ? url.search : ""))
+      }
     }
-  }, [form])
+  }, [emailParam, form, searchParams])
 
   const watchedEmail = form.watch("email")
   const watchedPassword = form.watch("password")
-  const signupUrl = `/signup?email=${encodeURIComponent(watchedEmail || "")}&password=${encodeURIComponent(watchedPassword || "")}`
+  
+  const signupUrl = `/signup?email=${encodeURIComponent(watchedEmail || "")}&password=${encodeURIComponent(watchedPassword || "")}${redirectTarget !== "/vault" ? `&redirectTo=${encodeURIComponent(redirectTarget)}` : ""}`
 
   async function onSubmit(data: LoginFormValues) {
     setIsLoading(true)
@@ -72,12 +77,12 @@ export default function LoginPage() {
       email: data.email,
       password: data.password,
     })
-    
+
     if (error) {
       setErrorText(getFriendlyAuthErrorMessage(error.message))
       setIsLoading(false)
     } else {
-      router.push("/")
+      router.push(redirectTarget)
       router.refresh()
     }
   }
@@ -142,9 +147,9 @@ export default function LoginPage() {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email address</Label>
-            <Input 
-              id="email" 
-              placeholder="name@college.edu" 
+            <Input
+              id="email"
+              placeholder="name@college.edu"
               {...form.register("email")}
               className={form.formState.errors.email ? "border-[#FF3B30]" : ""}
             />
@@ -160,19 +165,19 @@ export default function LoginPage() {
               </Link>
             </div>
             <div className="relative">
-              <Input 
-                id="password" 
-                type={showPassword ? "text" : "password"} 
-                placeholder="••••••••" 
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
                 {...form.register("password")}
-                className={form.formState.errors.password ? "border-[#FF3B30] pr-10" : "pr-10"}
+                className={`pr-10 ${form.formState.errors.password ? "border-[#FF3B30]" : ""}`}
               />
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {form.formState.errors.password && (
@@ -201,5 +206,19 @@ export default function LoginPage() {
         </Link>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="bg-card p-8 rounded-[24px] border-[2px] border-foreground shadow-[4px_4px_0px_black] min-h-[400px] flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-foreground border-t-[#FFD600] rounded-full animate-spin" />
+        </div>
+      }
+    >
+      <LoginFormContent />
+    </Suspense>
   )
 }

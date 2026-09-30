@@ -1,15 +1,59 @@
 "use client"
 
-import { ReactNode } from "react"
+import { ReactNode, useEffect, useState } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import { FolderArchive, Users } from "lucide-react"
 import { Toaster } from "@/components/ui/sonner"
 import UserMenu from "@/components/user-menu"
 import { VaultWindowManager } from "@/components/vault/VaultWindowManager"
+import { createClient } from "@/lib/supabase/client"
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let isMounted = true;
+
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!isMounted) return;
+      if (!user) {
+        setIsAuthenticated(false);
+        router.replace("/login");
+      } else {
+        setIsAuthenticated(true);
+      }
+    }
+
+    checkAuth();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        setIsAuthenticated(false);
+        router.replace("/login");
+      } else if (session) {
+        setIsAuthenticated(true);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, [router]);
+
+  if (isAuthenticated === false) {
+    return (
+      <div className="h-screen max-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-foreground border-t-[#FFD600] rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen max-h-screen bg-background text-foreground flex flex-col overflow-hidden">
       {/* Global Top Nav adhering to UI System */}
@@ -25,9 +69,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             href="/groups"
             title="Groups"
             aria-label="Groups"
-            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${
-              pathname.startsWith('/groups') || pathname.startsWith('/group') || pathname.startsWith('/modules') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
-            }`}
+            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${pathname.startsWith('/groups') || pathname.startsWith('/group') || pathname.startsWith('/modules') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
+              }`}
           >
             <Users className="w-5 h-5 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Groups</span>
@@ -37,9 +80,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             href="/vault"
             title="Vault"
             aria-label="Vault"
-            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${
-              pathname.startsWith('/vault') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
-            }`}
+            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${pathname.startsWith('/vault') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
+              }`}
           >
             <FolderArchive className="w-5 h-5 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Vault</span>
