@@ -2,79 +2,58 @@
 
 import { motion } from "framer-motion";
 
-const quotes = [
-  {
-    quote: "Finally stopped losing notes in WhatsApp groups.",
-    name: "Aisha M.",
-    role: "Computer Science"
-  },
-  {
-    quote: "The focus leaderboard actually made me competitive about studying.",
-    name: "David T.",
-    role: "Engineering"
-  },
-  {
-    quote: "Study circles saved my group project grade. Ephemeral rooms are genius.",
-    name: "Sarah L.",
-    role: "Business Studies"
-  },
-  {
-    quote: "One link to find every past paper. No more endless scrolling.",
-    name: "James K.",
-    role: "Medicine"
-  },
-  {
-    quote: "It feels like a game, but I'm actually getting straight A's.",
-    name: "Nina R.",
-    role: "Mathematics"
-  },
-  {
-    quote: "Love that my private vault is completely separate from community stuff.",
-    name: "Omar H.",
-    role: "Architecture"
-  }
+const groups = [
+  { name: "Artificial Intelligence & ML", desc: "Papers, lecture notes, datasets" },
+  { name: "Open-Source Tech & DevOps", desc: "Tools, CI/CD guides, repos" },
+  { name: "Application Programming & Full Stack", desc: "Code samples, tutorials, docs" },
+  { name: "Data Science, Analytics & BI", desc: "Notebooks, dashboards, references" },
+  { name: "Network & Cloud Computing", desc: "Architecture diagrams, vendor docs" },
+  { name: "Evolution of Computer Science", desc: "Foundational papers, history" },
+  { name: "Internet of Everything", desc: "Protocols, hardware guides, demos" },
+  { name: "Design, Innovation & Entrepreneurship", desc: "Case studies, prototypes" },
+  { name: "Cybersecurity, Blockchain & Secure Computing", desc: "CVEs, whitepapers, tools" },
+  { name: "Foundations & Multidisciplinary Courses", desc: "Core maths, physics, electives" },
 ];
 
-// Duplicate original array so we can scroll infinitely without a gap
-const duplicatedQuotes = [...quotes, ...quotes, ...quotes];
+// Render twice so the strip loops seamlessly
+const doubledGroups = [...groups, ...groups];
 
-export default function SocialProofSection() {
+export default function DomainGroupsSection() {
   return (
-    <section className="social-proof-section py-24 overflow-hidden border-y-[3px] border-foreground">
-      
-      <div className="max-w-[1280px] mx-auto px-4 md:px-8 mb-16 text-center">
+    <section className="py-24 overflow-hidden border-y-[3px] border-foreground bg-[#FFD600]">
+
+      <div className="max-w-[1280px] mx-auto px-4 md:px-8 mb-14 text-center">
         <h2 className="font-display font-extrabold text-4xl text-foreground">
-          Join thousands of students.
+          Domain groups for the IT department.
         </h2>
       </div>
 
+      {/* Infinite marquee — Framer Motion, same as original testimonials */}
       <div className="relative flex whitespace-nowrap overflow-hidden">
         <motion.div
-          className="flex gap-6 px-3"
-          animate={{ x: [0, -1035 * 2] }} // rough width calculation, we use percentage ideally, or a very wide distance with loop
+          className="flex gap-5 px-3"
+          animate={{ x: ["0%", "-50%"] }}
           transition={{
             x: {
               repeat: Infinity,
               repeatType: "loop",
-              duration: 40,
+              duration: 36,
               ease: "linear",
             },
           }}
-          // Alternative approach for smooth infinite CSS: style={{ width: 'max-content' }}
           style={{ width: "fit-content" }}
         >
-          {duplicatedQuotes.map((q, idx) => (
-            <div 
-              key={idx} 
-              className="social-proof-card w-[320px] md:w-[400px] shrink-0 bg-card dark:bg-[#1E1D1A] border-2 border-foreground rounded-[1.5rem] p-6 sm:p-8 shadow-[4px_4px_0px_black] whitespace-normal flex flex-col"
+          {doubledGroups.map((g, i) => (
+            <div
+              key={i}
+              className="shrink-0 w-64 bg-card border-[3px] border-foreground rounded-[1.5rem] p-5 shadow-[4px_4px_0px_var(--shadow-color,black)] flex flex-col gap-2 whitespace-normal"
             >
-              <p className="social-proof-quote font-sans italic text-lg text-foreground mb-6 flex-1">
-                "{q.quote}"
+              <p className="font-display font-bold text-sm text-foreground leading-snug">
+                {g.name}
               </p>
-              <div>
-                <p className="social-proof-name font-mono font-bold text-foreground text-sm">{q.name}</p>
-                <p className="social-proof-role font-mono text-xs text-muted-foreground">{q.role}</p>
-              </div>
+              <p className="font-mono text-[11px] text-muted-foreground">
+                {g.desc}
+              </p>
             </div>
           ))}
         </motion.div>

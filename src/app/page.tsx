@@ -9,7 +9,7 @@ import HeroSection from "@/components/landing/HeroSection";
 import ProblemSection from "@/components/landing/ProblemSection";
 import FeatureSection from "@/components/landing/FeatureSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import SocialProofSection from "@/components/landing/SocialProofSection";
+import DomainGroupsSection from "@/components/landing/SocialProofSection";
 import FinalCtaSection from "@/components/landing/FinalCtaSection";
 import LandingFooter from "@/components/landing/LandingFooter";
 
@@ -22,7 +22,7 @@ export default function HomePage() {
     const checkSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.replace("/vault");
+        router.replace("/profile");
       } else {
         setIsInitializing(false);
       }
@@ -33,7 +33,7 @@ export default function HomePage() {
   if (isInitializing) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-card">
-        {/* Simple loader or entirely blank while checking auth */}
+        {/* Blank while checking auth */}
       </div>
     );
   }
@@ -46,7 +46,7 @@ export default function HomePage() {
         <ProblemSection />
         <FeatureSection />
         <HowItWorksSection />
-        <SocialProofSection />
+        <DomainGroupsSection />
         <FinalCtaSection />
       </main>
       <LandingFooter />

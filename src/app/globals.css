@@ -7,9 +7,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-heading);
+  --font-display: var(--font-heading);
+  --font-mono: var(--font-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -82,6 +82,7 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --shadow-color: black;
 }
 
 .dark {
@@ -117,6 +118,7 @@
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.556 0 0);
+  --shadow-color: rgba(255, 214, 0, 0.35);
 }
 
 @layer base {
@@ -427,29 +429,23 @@
   stroke: #000000 !important;
 }
 
-.dark .social-proof-card,
-.dark .social-proof-card :where(*) {
-  color: var(--foreground) !important;
-}
-
-.dark .social-proof-card :where(.text-muted-foreground) {
-  color: var(--muted-foreground) !important;
-}
-
-.social-proof-section {
-  background: #FFD600;
-}
-
-.dark .social-proof-section .social-proof-card .social-proof-quote,
-.dark .social-proof-section .social-proof-card .social-proof-name {
-  color: #FFFFFF !important;
-}
-
-.dark .social-proof-section .social-proof-card .social-proof-role {
-  color: rgba(255, 255, 255, 0.72) !important;
-}
-
 .dark .brand-logo,
 .dark .brand-logo * {
   stroke: none !important;
+}
+
+/* ── Marquee animation (DomainGroupsSection) ──────────────────── */
+@keyframes marquee {
+  from { transform: translateX(0%); }
+  to   { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 36s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee {
+    animation: none;
+  }
 }

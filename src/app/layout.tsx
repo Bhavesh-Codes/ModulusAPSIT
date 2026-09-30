@@ -17,8 +17,8 @@ const spaceGrotesk = Space_Grotesk({
 });
 
 export const metadata: Metadata = {
-  title: "MODULUS",
-  description: "Collaborative learning platform",
+  title: "MODULUS – IT Department, APSIT",
+  description: "A private vault and domain expert groups for faculty of the Department of Information Technology, A. P. Shah Institute of Technology.",
 };
 
 export default function RootLayout({
