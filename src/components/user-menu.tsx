@@ -4,9 +4,9 @@ import { useState, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { logout } from "@/actions/auth"
-import { LogOut, Settings, User } from "lucide-react"
+import { LogOut, User, Sun, Moon } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
-import { getDisplayRole } from "@/lib/roles"
+import { useTheme } from "next-themes"
 
 interface UserProfile {
   name: string | null
@@ -23,6 +23,14 @@ export default function UserMenu() {
   const menuRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const supabase = createClient()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isDark = mounted && resolvedTheme === "dark"
 
   // Fetch user profile on mount
   useEffect(() => {
@@ -72,11 +80,6 @@ export default function UserMenu() {
     router.push("/profile")
   }
 
-  const handleEditProfile = () => {
-    setOpen(false)
-    router.push("/setup")
-  }
-
   // Derive initials
   const initials = profile?.name
     ? profile.name
@@ -111,21 +114,52 @@ export default function UserMenu() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute right-0 top-[calc(100%+8px)] w-[220px] bg-card border-[2px] border-foreground shadow-[6px_6px_0px_black] rounded-[16px] overflow-hidden z-[100]"
+            className="absolute right-0 top-[calc(100%+8px)] w-[240px] bg-card border-[2px] border-foreground shadow-[6px_6px_0px_black] rounded-[16px] overflow-hidden z-[100]"
           >
             {/* Profile Summary */}
-            <div className="px-4 py-3 border-b-[2px] border-border bg-background">
+            <div className="p-3.5 border-b-[2px] border-border bg-background">
               <p className="font-heading font-bold text-[14px] text-foreground truncate">
                 {profile?.name ? `${profile.title ? `${profile.title} ` : ""}${profile.name}` : "Loading…"}
               </p>
               <p className="font-mono text-[11px] text-muted-foreground truncate mt-0.5">
                 {profile?.email ?? ""}
               </p>
-              {profile?.role && (
-                <div className="mt-2 inline-flex items-center px-2 py-0.5 rounded-[6px] border-[1.5px] border-foreground bg-[#FFD600] font-mono text-[10px] font-bold shadow-[1.5px_1.5px_0px_black] text-foreground uppercase tracking-wider">
-                  {getDisplayRole(profile.role)}
-                </div>
-              )}
+
+              {/* Full-width Segmented Theme Switcher */}
+              <div className="mt-3 grid grid-cols-2 gap-1.5 p-1 rounded-[10px] border-[2px] border-foreground bg-card shadow-[2px_2px_0px_black]">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setTheme("light")
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-[7px] font-sans font-bold text-[12px] transition-all ${
+                    mounted && !isDark
+                      ? "bg-[#FFD600] text-foreground border-[1.5px] border-foreground shadow-[1px_1px_0px_black]"
+                      : "text-muted-foreground hover:text-foreground border-[1.5px] border-transparent"
+                  }`}
+                  title="Switch to Light Mode"
+                >
+                  <Sun className="w-3.5 h-3.5" />
+                  <span>Light</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setTheme("dark")
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-[7px] font-sans font-bold text-[12px] transition-all ${
+                    mounted && isDark
+                      ? "bg-[#FFD600] text-foreground border-[1.5px] border-foreground shadow-[1px_1px_0px_black]"
+                      : "text-muted-foreground hover:text-foreground border-[1.5px] border-transparent"
+                  }`}
+                  title="Switch to Dark Mode"
+                >
+                  <Moon className="w-3.5 h-3.5" />
+                  <span>Dark</span>
+                </button>
+              </div>
             </div>
 
             {/* Menu Items */}
@@ -136,14 +170,6 @@ export default function UserMenu() {
               >
                 <User className="w-4 h-4 shrink-0" />
                 View Profile
-              </button>
-
-              <button
-                onClick={handleEditProfile}
-                className="w-full flex items-center gap-3 px-4 py-2.5 font-sans font-medium text-[14px] text-foreground hover:bg-[#FFD600] transition-colors text-left"
-              >
-                <Settings className="w-4 h-4 shrink-0" />
-                Edit Profile
               </button>
 
               <div className="h-[2px] bg-muted mx-4 my-1" />

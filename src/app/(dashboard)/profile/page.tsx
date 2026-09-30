@@ -4,9 +4,10 @@ import { useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { motion } from "framer-motion"
-import { FileText, Link as LinkIcon, Users, Building, Edit2, Check, X, Clock, Camera, Loader2 } from "lucide-react"
+import { FileText, Link as LinkIcon, Users, Building, Edit2, Check, X, Clock, Camera, Loader2, Sun, Moon } from "lucide-react"
 import { toast } from "sonner"
 import { getDisplayRole } from "@/lib/roles"
+import { useTheme } from "next-themes"
 
 // Types
 interface ProfileStats {
@@ -33,6 +34,14 @@ export default function ProfilePage() {
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const supabase = createClient()
   const queryClient = useQueryClient()
+  const { resolvedTheme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
+  const isDark = mounted && resolvedTheme === "dark"
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -174,13 +183,58 @@ export default function ProfilePage() {
 
   return (
     <div className="h-full max-w-7xl mx-auto p-6 lg:p-8 flex flex-col box-border">
-      <div className="shrink-0 mb-6">
-        <h1 className="font-heading font-extrabold text-[32px] md:text-[40px] text-foreground tracking-tight uppercase leading-none">
-          Your Profile
-        </h1>
-        <p className="font-sans font-medium text-[15px] text-muted-foreground mt-1.5">
-          Manage your personal details and view your activity.
-        </p>
+      <div className="shrink-0 mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-heading font-extrabold text-[32px] md:text-[40px] text-foreground tracking-tight uppercase leading-none">
+            Your Profile
+          </h1>
+          <p className="font-sans font-medium text-[15px] text-muted-foreground mt-1.5">
+            Manage your personal details and view your activity.
+          </p>
+        </div>
+
+        {/* Theme / Appearance Toggle with Text (Desktop) */}
+        <div className="hidden sm:inline-flex items-center gap-3 px-3.5 py-2 bg-card border-[2.5px] border-foreground rounded-[16px] shadow-[3px_3px_0px_black]">
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-[#FFD600] rounded-lg border-[1.5px] border-foreground">
+              {isDark ? (
+                <Moon className="w-4 h-4 text-foreground" />
+              ) : (
+                <Sun className="w-4 h-4 text-foreground" />
+              )}
+            </div>
+            <span className="font-heading font-bold text-[13px] text-foreground">
+              Theme
+            </span>
+          </div>
+
+          <div className="inline-flex p-0.5 bg-background border-[1.5px] border-foreground rounded-[10px]">
+            <button
+              type="button"
+              onClick={() => setTheme("light")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[7px] font-sans font-bold text-[12px] transition-all ${
+                mounted && !isDark
+                  ? "bg-[#FFD600] text-foreground border-[1px] border-foreground shadow-[1px_1px_0px_black]"
+                  : "text-muted-foreground hover:text-foreground border-[1px] border-transparent"
+              }`}
+            >
+              <Sun className="w-3.5 h-3.5" />
+              Light
+            </button>
+            <button
+              type="button"
+              onClick={() => setTheme("dark")}
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[7px] font-sans font-bold text-[12px] transition-all ${
+                mounted && isDark
+                  ? "bg-[#FFD600] text-foreground border-[1px] border-foreground shadow-[1px_1px_0px_black]"
+                  : "text-muted-foreground hover:text-foreground border-[1px] border-transparent"
+              }`}
+            >
+              <Moon className="w-3.5 h-3.5" />
+              Dark
+            </button>
+          </div>
+        </div>
       </div>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 min-h-0 pb-2 relative z-10">
@@ -300,6 +354,54 @@ export default function ProfilePage() {
               <MiniStatCard icon={<LinkIcon className="w-4 h-4" />} value={stats?.vaultLinkCount} label="Vault Links" color="bg-[#FFD600]" />
               <MiniStatCard icon={<Users className="w-4 h-4" />} value={stats?.communitiesJoined} label="Joined Comm." color="bg-[#0057FF]" textColor="text-white" />
               <MiniStatCard icon={<Building className="w-4 h-4" />} value={stats?.communitiesOwned} label="Owned Comm." color="bg-[#00D4FF]" />
+            </div>
+          </div>
+
+          {/* Theme / Appearance Toggle with Text (Phone Mode - Below First Box) */}
+          <div className="sm:hidden mt-4 w-full flex items-center justify-between p-3.5 bg-card border-[2.5px] border-foreground rounded-[20px] shadow-[4px_4px_0px_black]">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-[#FFD600] rounded-xl border-[1.5px] border-foreground shadow-[1.5px_1.5px_0px_black]">
+                {isDark ? (
+                  <Moon className="w-4 h-4 text-foreground" />
+                ) : (
+                  <Sun className="w-4 h-4 text-foreground" />
+                )}
+              </div>
+              <div>
+                <span className="font-heading font-bold text-[13px] text-foreground block leading-tight">
+                  Theme Mode
+                </span>
+                <span className="font-sans font-medium text-[11px] text-muted-foreground">
+                  {mounted ? (isDark ? "Dark theme active" : "Light theme active") : "Light theme"}
+                </span>
+              </div>
+            </div>
+
+            <div className="inline-flex p-1 bg-background border-[1.5px] border-foreground rounded-[12px]">
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] font-sans font-bold text-[12px] transition-all ${
+                  mounted && !isDark
+                    ? "bg-[#FFD600] text-foreground border-[1px] border-foreground shadow-[1px_1px_0px_black]"
+                    : "text-muted-foreground hover:text-foreground border-[1px] border-transparent"
+                }`}
+              >
+                <Sun className="w-3.5 h-3.5" />
+                Light
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] font-sans font-bold text-[12px] transition-all ${
+                  mounted && isDark
+                    ? "bg-[#FFD600] text-foreground border-[1px] border-foreground shadow-[1px_1px_0px_black]"
+                    : "text-muted-foreground hover:text-foreground border-[1px] border-transparent"
+                }`}
+              >
+                <Moon className="w-3.5 h-3.5" />
+                Dark
+              </button>
             </div>
           </div>
         </motion.div>
