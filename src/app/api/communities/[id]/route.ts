@@ -1,50 +1,26 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { getViewer, getCommunityAccess } from "@/lib/server/access"
+import { errorResponse } from "@/lib/server/http"
 
-export async function GET(request: Request, context: { params: Promise<{ id: string }> }) {
-  const supabase = await createClient()
+export async function GET(_request: Request, context: { params: Promise<{ id: string }> }) {
+  try {
+    const viewer = await getViewer()
+    const admin = createAdminClient()
+    const { id } = await context.params
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { data: community, error } = await admin.from("communities").select("*").eq("id", id).maybeSingle()
+    if (error || !community) return NextResponse.json({ error: "Community not found" }, { status: 404 })
+
+    const access = await getCommunityAccess(admin, viewer, id)
+
+    return NextResponse.json({
+      ...community,
+      membership: access.role ? { role: access.role } : null,
+      can_manage: viewer.isPrivileged,
+      viewer_id: viewer.userId,
+    })
+  } catch (e) {
+    return errorResponse(e)
   }
-
-  const { id } = await context.params
-
-  const { data: community, error: communityError } = await supabase
-    .from('communities')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (communityError || !community) {
-    return NextResponse.json({ error: 'Community not found' }, { status: 404 })
-  }
-
-  const { data: memberData } = await supabase
-    .from('community_members')
-    .select('role')
-    .eq('community_id', id)
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const systemRole = userProfile?.role || 'faculty'
-  const isGlobalViewer = systemRole.toLowerCase() === 'hod' || systemRole.toLowerCase() === 'dev'
-
-  // Give global viewers a mock 'peer' membership if they don't have one, or if they are pending.
-  let activeMembership = memberData ? { role: memberData.role } : null
-  if (isGlobalViewer && (!activeMembership || activeMembership.role === 'pending')) {
-    activeMembership = { role: 'peer' }
-  }
-
-  return NextResponse.json({
-    ...community,
-    membership: activeMembership
-  })
 }

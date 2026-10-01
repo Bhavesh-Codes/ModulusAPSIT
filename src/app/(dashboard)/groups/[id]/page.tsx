@@ -1,8 +1,9 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useQuery } from "@tanstack/react-query"
+import { useCommunity, useCommunityResources } from "@/components/groups/useCommunityData"
 import Link from "next/link"
+import type { CommunityResource } from "@/types/groups"
 import { 
   FolderSync, 
   ArrowRight, 
@@ -16,29 +17,11 @@ export default function GroupHomePage() {
   const params = useParams()
   const id = params.id as string
 
-  // Fetch group details
-  const { data: community } = useQuery({
-    queryKey: ["community", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/communities/${id}`)
-      if (!res.ok) throw new Error("Failed to fetch group")
-      return res.json()
-    },
-  })
-
-  // Fetch group vault items
-  const { data: vaultResponse, isLoading: vaultLoading } = useQuery({
-    queryKey: ["communityVaultItems", id],
-    queryFn: async () => {
-      const res = await fetch(`/api/communities/${id}/vault`)
-      if (!res.ok) return { data: [] }
-      return res.json()
-    },
-  })
-
-  const vaultItems = vaultResponse?.data || []
-  const role = community?.membership?.role
-  const isMember = role === "owner" || role === "curator" || role === "peer"
+  const { data: community } = useCommunity(id)
+  const { data: resources = [], isLoading: vaultLoading } = useCommunityResources(id)
+  const vaultItems: CommunityResource[] = resources
+  const role = community?.membership?.role as string | undefined
+  const isMember = !!community?.membership
 
   return (
     <div className="space-y-8 mt-6">
@@ -63,7 +46,7 @@ export default function GroupHomePage() {
                 Group Vault
               </h2>
               <p className="font-sans text-[15px] text-muted-foreground mt-1 max-w-lg">
-                Collaborative file depository for lecture notes, reference PDFs, past papers, and useful links curated by group members.
+                Shared lecture notes, lab manuals, question banks, previous papers and links, organised by subject and module.
               </p>
             </div>
           </div>
@@ -93,17 +76,13 @@ export default function GroupHomePage() {
             
             <div className="space-y-3 font-sans text-[14px]">
               <div className="flex items-center justify-between py-1.5 border-b border-border">
-                <span className="text-muted-foreground">Access Type</span>
-                <span className="font-mono font-bold">{community?.type || "Public"}</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5 border-b border-border">
                 <span className="text-muted-foreground">Total Members</span>
-                <span className="font-mono font-bold">{community?.member_count || 1}</span>
+                <span className="font-mono font-bold">{community?.member_count ?? 0}</span>
               </div>
               <div className="flex items-center justify-between py-1.5">
                 <span className="text-muted-foreground">Your Status</span>
-                <span className="font-mono font-bold capitalize">
-                  {role ? role : "Visitor"}
+                <span className="font-mono font-bold">
+                  {role === "hod" ? "HOD" : role === "faculty" ? "Faculty" : "Visitor"}
                 </span>
               </div>
             </div>
@@ -111,7 +90,7 @@ export default function GroupHomePage() {
 
           {!isMember && (
             <div className="p-3 bg-[#FFD600]/20 border-[2px] border-foreground rounded-[12px] text-[13px] font-medium text-foreground">
-              👉 Click <strong>Join Group</strong> above to get full access to shared resources.
+              You can browse everything here. Click <strong>Join Group</strong> above to share your own files.
             </div>
           )}
         </div>
@@ -144,10 +123,9 @@ export default function GroupHomePage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {vaultItems.slice(0, 6).map((item: any) => {
-              const isLink = item.vault_items?.item_type === "link"
-              const title = item.vault_items?.title || item.vault_items?.files?.filename || "Untitled"
-              const sharedBy = item.users?.name || "Group Member"
+            {vaultItems.slice(0, 6).map((item) => {
+              const isLink = item.item_type === "link"
+              const sharedBy = item.uploaded_by_name
 
               return (
                 <div
@@ -164,10 +142,11 @@ export default function GroupHomePage() {
                     </div>
                     <div className="overflow-hidden">
                       <p className="font-heading font-bold text-[14px] text-foreground truncate">
-                        {title}
+                        {item.title}
                       </p>
                       <p className="font-mono text-[11px] text-muted-foreground truncate">
-                        by {sharedBy}
+                        {item.subject ? item.subject.name : "Unsorted"}
+                        {sharedBy ? ` · Uploaded by ${sharedBy}` : ""}
                       </p>
                     </div>
                   </div>
@@ -177,7 +156,7 @@ export default function GroupHomePage() {
                       {isLink ? "Link" : "File"}
                     </span>
                     <Link
-                      href={`/groups/${id}/vault`}
+                      href={item.subject ? `/groups/${id}/vault/subjects/${item.subject.id}` : `/groups/${id}/vault`}
                       className="font-heading font-bold text-[12px] text-foreground hover:underline flex items-center gap-1"
                     >
                       Open <ArrowRight className="w-3 h-3" />

@@ -2,213 +2,29 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { getViewer, type AdminClient } from "@/lib/server/access"
 
 interface CreateModuleData {
   name: string
   description?: string
-  type: string
 }
 
 interface UpdateModuleDetailsData {
   name: string
   description?: string
-  type: string
   banner_url?: string
 }
 
-async function requireUser(supabase: any) {
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) throw new Error("Unauthorized")
-  return user
+async function requirePrivileged() {
+  const viewer = await getViewer()
+  if (!viewer.isPrivileged) throw new Error("Only the HOD can do this.")
+  return viewer
 }
 
-async function verifyOwner(supabase: any, moduleId: string): Promise<boolean> {
-  const { data: authData, error: authError } = await supabase.auth.getUser()
-  if (authError || !authData.user) return false
-
-  const { data: membershipData, error: membershipError } = await supabase
-    .from("community_members")
-    .select("role")
-    .eq("community_id", moduleId)
-    .eq("user_id", authData.user.id)
-    .single()
-
-  if (membershipError || !membershipData || membershipData.role !== "owner") {
-    return false
-  }
-
-  return true
-}
-
-async function syncMemberCount(supabase: any, moduleId: string) {
-  const { count, error } = await supabase
-    .from("community_members")
-    .select("*", { count: "exact", head: true })
-    .eq("community_id", moduleId)
-    .in("role", ["peer", "owner", "curator"])
-
-  if (!error && count !== null) {
-    await supabase.from("communities").update({ member_count: count }).eq("id", moduleId)
-  }
-}
-
-// ─── Module Lifecycle ──────────────────────────────────────────────────────────
-
-export async function createModule(data: CreateModuleData) {
-  const supabase = await createClient()
-  const user = await requireUser(supabase)
-
-  const { data: module_, error: insertError } = await supabase
-    .from("communities")
-    .insert([{ name: data.name, description: data.description, type: data.type, owner_id: user.id }])
-    .select()
-    .single()
-
-  if (insertError) throw new Error(insertError.message)
-
-  const { error: memberError } = await supabase
-    .from("community_members")
-    .insert([{ community_id: module_.id, user_id: user.id, role: "owner" }])
-
-  if (memberError) throw new Error(memberError.message)
-
-  await syncMemberCount(supabase, module_.id)
-
-  const { data: updatedModule } = await supabase
-    .from("communities")
-    .select("*")
-    .eq("id", module_.id)
-    .single()
-
-  revalidatePath("/modules")
-  revalidatePath("/groups")
-  return updatedModule || module_
-}
-
-export async function joinModule(moduleId: string) {
-  const supabase = await createClient()
-  const user = await requireUser(supabase)
-
-  const { data: module_, error: fetchError } = await supabase
-    .from("communities")
-    .select("type")
-    .eq("id", moduleId)
-    .single()
-
-  if (fetchError || !module_) throw new Error("Module not found")
-
-  const role = module_.type === "Private" ? "pending" : "peer"
-
-  const { error } = await supabase
-    .from("community_members")
-    .insert([{ community_id: moduleId, user_id: user.id, role }])
-
-  if (error) throw new Error(error.message)
-
-  if (role === "peer") await syncMemberCount(supabase, moduleId)
-
-  revalidatePath(`/modules/${moduleId}`)
-  revalidatePath(`/groups/${moduleId}`)
-  revalidatePath("/modules")
-  revalidatePath("/groups")
-  return { success: true, role }
-}
-
-export async function leaveModule(moduleId: string) {
-  const supabase = await createClient()
-  const user = await requireUser(supabase)
-
-  const { error } = await supabase
-    .from("community_members")
-    .delete()
-    .eq("community_id", moduleId)
-    .eq("user_id", user.id)
-
-  if (error) throw new Error(error.message)
-
-  await syncMemberCount(supabase, moduleId)
-
-  revalidatePath(`/modules/${moduleId}`)
-  revalidatePath(`/groups/${moduleId}`)
-  revalidatePath("/modules")
-  revalidatePath("/groups")
-  return { success: true }
-}
-
-export async function deleteModule(moduleId: string) {
-  const supabase = await createClient()
-
-  const isOwner = await verifyOwner(supabase, moduleId)
-  if (!isOwner) {
-    throw new Error("Unauthorized. Only the owner can delete the module.")
-  }
-
-  const { error } = await supabase.from("communities").delete().eq("id", moduleId)
-
-  if (error) {
-    console.error("Error deleting module:", error)
-    throw new Error("Failed to delete module.")
-  }
-
-  // Assume cascading deletes are handled in DB as stated
-  revalidatePath("/modules")
-  revalidatePath("/groups")
-  return { success: true }
-}
-
-// ─── Module Settings ────────────────────────────────────────────────────────────
-
-export async function updateModuleDetails(moduleId: string, data: UpdateModuleDetailsData) {
-  const supabase = await createClient()
-
-  const isOwner = await verifyOwner(supabase, moduleId)
-  if (!isOwner) {
-    throw new Error("Unauthorized. Only the owner can update module details.")
-  }
-
-  const { error } = await supabase
-    .from("communities")
-    .update({
-      name: data.name,
-      description: data.description || null,
-      type: data.type,
-      banner_url: data.banner_url || null,
-    })
-    .eq("id", moduleId)
-
-  if (error) {
-    console.error("Error updating module details:", error)
-    throw new Error("Failed to update module details.")
-  }
-
-  revalidatePath(`/modules/${moduleId}`)
-  revalidatePath(`/groups/${moduleId}`)
-  return { success: true }
-}
-
-// ─── Module Members ──────────────────────────────────────────────────────────
-
-export async function getModuleMembers(moduleId: string) {
-  const supabase = await createClient()
-
-  // Verify the user is at least a member before exposing roster
-  const { data: authData } = await supabase.auth.getUser()
-  if (!authData.user) {
-    throw new Error("Unauthorized")
-  }
-
-  const { data: membershipData } = await supabase
-    .from("community_members")
-    .select("role")
-    .eq("community_id", moduleId)
-    .eq("user_id", authData.user.id)
-    .single()
-
-  if (!membershipData) {
-    throw new Error("You must be a member to view the roster")
-  }
-
-  const { data, error } = await supabase
+/** Members shown to people: faculty and HOD rows, never the hidden dev role. */
+async function visibleMemberRows(admin: AdminClient, moduleId: string) {
+  const { data, error } = await admin
     .from("community_members")
     .select(`
       role,
@@ -218,88 +34,156 @@ export async function getModuleMembers(moduleId: string) {
         id,
         name,
         email,
-        profile_pic
+        profile_pic,
+        role
       )
     `)
     .eq("community_id", moduleId)
+    .in("role", ["hod", "faculty"])
 
-  if (error) {
-    console.error("Error fetching module members:", error)
-    throw new Error("Failed to fetch module members.")
-  }
+  if (error) throw new Error("Failed to fetch module members.")
 
-  return data.map((item: any) => {
-    const u = Array.isArray(item.users) ? item.users[0] : item.users
-    return {
-      id: u.id,
-      name: u.name,
-      email: u.email,
-      profile_pic: u.profile_pic,
-      role: item.role,
-      joined_at: item.joined_at,
-    }
+  return (data ?? []).filter((row: any) => {
+    const u = Array.isArray(row.users) ? row.users[0] : row.users
+    return u && (u.role ?? "").toLowerCase() !== "dev"
   })
 }
 
-export async function updateMemberRole(moduleId: string, userId: string, newRole: string) {
+async function syncMemberCount(moduleId: string) {
+  const admin = createAdminClient()
+  const rows = await visibleMemberRows(admin, moduleId)
+  await admin.from("communities").update({ member_count: rows.length }).eq("id", moduleId)
+}
+
+// ─── Module Lifecycle ──────────────────────────────────────────────────────────
+
+export async function createModule(data: CreateModuleData) {
   const supabase = await createClient()
+  const viewer = await requirePrivileged()
 
-  const isOwner = await verifyOwner(supabase, moduleId)
-  if (!isOwner) {
-    throw new Error("Unauthorized. Only the owner can update member roles.")
-  }
-
-  const { data: currentTargetData } = await supabase
-    .from("community_members")
-    .select("role")
-    .eq("community_id", moduleId)
-    .eq("user_id", userId)
+  // HOD/dev are members of every community through their role, so no member row is needed.
+  const { data: module_, error: insertError } = await supabase
+    .from("communities")
+    .insert([{ name: data.name, description: data.description, owner_id: viewer.userId }])
+    .select()
     .single()
 
-  if (currentTargetData?.role === "owner") {
-    throw new Error("Cannot change role of the owner.")
-  }
+  if (insertError) throw new Error(insertError.message)
+
+  revalidatePath("/groups")
+  return module_
+}
+
+export async function joinModule(moduleId: string) {
+  const supabase = await createClient()
+  const viewer = await getViewer()
+
+  if (viewer.isPrivileged) throw new Error("You already have access to every group.")
+
+  const { data: module_, error: fetchError } = await supabase
+    .from("communities")
+    .select("id")
+    .eq("id", moduleId)
+    .single()
+
+  if (fetchError || !module_) throw new Error("Group not found")
 
   const { error } = await supabase
     .from("community_members")
-    .update({ role: newRole })
+    .insert([{ community_id: moduleId, user_id: viewer.userId, role: "faculty" }])
+
+  if (error) throw new Error(error.message)
+
+  await syncMemberCount(moduleId)
+
+  revalidatePath(`/groups/${moduleId}`)
+  revalidatePath("/groups")
+  return { success: true, role: "faculty" as const }
+}
+
+export async function leaveModule(moduleId: string) {
+  const supabase = await createClient()
+  const viewer = await getViewer()
+
+  const { error } = await supabase
+    .from("community_members")
+    .delete()
     .eq("community_id", moduleId)
-    .eq("user_id", userId)
+    .eq("user_id", viewer.userId)
+
+  if (error) throw new Error(error.message)
+
+  await syncMemberCount(moduleId)
+
+  revalidatePath(`/groups/${moduleId}`)
+  revalidatePath("/groups")
+  return { success: true }
+}
+
+export async function deleteModule(moduleId: string) {
+  await requirePrivileged()
+  const admin = createAdminClient()
+
+  const { error } = await admin.from("communities").delete().eq("id", moduleId)
 
   if (error) {
-    console.error("Error updating member role:", error)
-    throw new Error("Failed to update member role.")
+    console.error("Error deleting module:", error)
+    throw new Error("Failed to delete group.")
   }
 
-  if (newRole === "peer" || newRole === "owner" || newRole === "curator") {
-    await syncMemberCount(supabase, moduleId)
+  revalidatePath("/groups")
+  return { success: true }
+}
+
+// ─── Module Settings ────────────────────────────────────────────────────────────
+
+export async function updateModuleDetails(moduleId: string, data: UpdateModuleDetailsData) {
+  await requirePrivileged()
+  const admin = createAdminClient()
+
+  const { error } = await admin
+    .from("communities")
+    .update({
+      name: data.name,
+      description: data.description || null,
+      banner_url: data.banner_url || null,
+    })
+    .eq("id", moduleId)
+
+  if (error) {
+    console.error("Error updating module details:", error)
+    throw new Error("Failed to update group details.")
   }
 
-  revalidatePath(`/modules/${moduleId}`)
   revalidatePath(`/groups/${moduleId}`)
   return { success: true }
 }
 
+// ─── Module Members ──────────────────────────────────────────────────────────
+
+export async function getModuleMembers(moduleId: string) {
+  await requirePrivileged()
+  const admin = createAdminClient()
+  const rows = await visibleMemberRows(admin, moduleId)
+
+  return rows.map((item: any) => {
+    const u = Array.isArray(item.users) ? item.users[0] : item.users
+    return {
+      id: u.id as string,
+      name: u.name as string | null,
+      email: u.email as string | null,
+      profile_pic: u.profile_pic as string | null,
+      role: item.role as "hod" | "faculty",
+      joined_at: item.joined_at as string,
+    }
+  })
+}
+
 export async function removeMember(moduleId: string, userId: string) {
-  const supabase = await createClient()
+  await requirePrivileged()
+  const admin = createAdminClient()
 
-  const isOwner = await verifyOwner(supabase, moduleId)
-  if (!isOwner) {
-    throw new Error("Unauthorized. Only the owner can remove members.")
-  }
-
-  const { data: currentTargetData } = await supabase
-    .from("community_members")
-    .select("role")
-    .eq("community_id", moduleId)
-    .eq("user_id", userId)
-    .single()
-
-  if (currentTargetData?.role === "owner") {
-    throw new Error("Cannot kick the owner.")
-  }
-
-  const { error } = await supabase
+  const { error } = await admin
     .from("community_members")
     .delete()
     .eq("community_id", moduleId)
@@ -310,9 +194,8 @@ export async function removeMember(moduleId: string, userId: string) {
     throw new Error("Failed to remove member.")
   }
 
-  await syncMemberCount(supabase, moduleId)
+  await syncMemberCount(moduleId)
 
-  revalidatePath(`/modules/${moduleId}`)
   revalidatePath(`/groups/${moduleId}`)
   return { success: true }
 }

@@ -1,63 +1,42 @@
-import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { getViewer } from "@/lib/server/access"
+import { errorResponse } from "@/lib/server/http"
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
+  try {
+    const viewer = await getViewer()
+    const admin = createAdminClient()
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser()
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { searchParams } = new URL(request.url)
+    const q = searchParams.get("q")?.replace(/[%_\\]/g, " ").trim()
+
+    let query = admin.from("communities").select("*").order("name", { ascending: true })
+    if (q) query = query.ilike("name", `%${q}%`)
+
+    const { data: communities, error } = await query
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    const { data: memberships } = await admin
+      .from("community_members")
+      .select("community_id, role")
+      .eq("user_id", viewer.userId)
+
+    const roleByCommunity = new Map<string, string>()
+    for (const m of memberships ?? []) roleByCommunity.set(m.community_id, m.role)
+
+    const result = (communities ?? []).map((c) => {
+      // HOD and dev count as members of every community. Dev is shown as 'hod' so it never leaks.
+      const role = viewer.isPrivileged ? "hod" : roleByCommunity.get(c.id)
+      return {
+        ...c,
+        membership: role === "hod" || role === "faculty" ? { role } : null,
+        can_manage: viewer.isPrivileged,
+      }
+    })
+
+    return NextResponse.json(result)
+  } catch (e) {
+    return errorResponse(e)
   }
-
-  const { searchParams } = new URL(request.url)
-  const q = searchParams.get('q')
-
-  let query = supabase
-    .from('communities')
-    .select('*')
-  
-  if (q) {
-    query = query.ilike('name', `%${q}%`)
-  }
-
-  const { data: communities, error } = await query
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 })
-  }
-
-  const { data: memberships } = await supabase
-    .from('community_members')
-    .select('community_id, role')
-    .eq('user_id', user.id)
-
-  const membershipMap = new Map()
-  if (memberships) {
-    memberships.forEach(m => membershipMap.set(m.community_id, m.role))
-  }
-
-  const { data: userProfile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle()
-
-  const systemRole = userProfile?.role || 'faculty'
-  const isGlobalViewer = systemRole.toLowerCase() === 'hod' || systemRole.toLowerCase() === 'dev'
-
-  const enhancedCommunities = communities.map((c: any) => {
-    let activeRole = membershipMap.has(c.id) ? membershipMap.get(c.id) : null
-    
-    // Give global viewers mock access if they don't have active membership
-    if (isGlobalViewer && (!activeRole || activeRole === 'pending')) {
-      activeRole = 'peer'
-    }
-
-    return {
-      ...c,
-      membership: activeRole ? { role: activeRole } : null
-    }
-  })
-
-  return NextResponse.json(enhancedCommunities)
 }

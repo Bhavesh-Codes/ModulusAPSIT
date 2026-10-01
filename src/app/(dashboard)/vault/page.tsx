@@ -44,6 +44,7 @@ import {
   Check,
   Maximize2,
   Minimize2,
+  Share2,
 } from "lucide-react"
 import {
   DropdownMenu,
@@ -66,6 +67,8 @@ import {
   createVaultLink,
 } from "@/actions/vault"
 import type { VaultFolder, VaultItem } from "@/types/vault"
+import { ShareDialog, type ShareSource } from "@/components/groups/ShareDialog"
+import { sha256Hex } from "@/lib/hash"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface EditFormValues {
@@ -389,6 +392,8 @@ function UploadModal({
         const combinedTags = Array.from(new Set([...globalTags, ...item.tags]))
         if (combinedTags.length > 0) formData.append("tags", JSON.stringify(combinedTags))
         if (targetFolderId) formData.append("folder_id", targetFolderId)
+        const hash = await sha256Hex(item.file)
+        if (hash) formData.append("content_hash", hash)
 
         const res = await fetch("/api/vault/upload", { method: "POST", body: formData })
         if (!res.ok) {
@@ -1282,6 +1287,7 @@ function FileCard({
   onDelete,
   onEdit,
   onMove,
+  onShare,
   onDropFile,
   onDragOver,
   onOpenWindow,
@@ -1294,6 +1300,7 @@ function FileCard({
   onDelete: () => void
   onEdit: (item: VaultItem) => void
   onMove: (item: VaultItem) => void
+  onShare: (item: VaultItem) => void
   onDropFile: (type: "file" | "folder", id: string, targetId: string | null) => void
   onDragOver: (folderId: string | null) => void
   onOpenWindow: (windowConfig: Omit<VaultWindow, 'id' | 'zIndex'>) => void
@@ -1471,6 +1478,9 @@ function FileCard({
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onMove(item) }} className="flex items-center gap-2 cursor-pointer font-sans text-[13px] font-medium focus:bg-muted px-2 py-1.5 rounded-[0.5rem] outline-none">
                   <FolderInput className="w-4 h-4 text-[#FF6B00]" /> Move
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onShare(item) }} className="flex items-center gap-2 cursor-pointer font-sans text-[13px] font-medium focus:bg-muted px-2 py-1.5 rounded-[0.5rem] outline-none">
+                  <Share2 className="w-4 h-4 text-[#0057FF]" /> Share to group
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-muted my-1" />
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDelete() }} className="flex items-center gap-2 cursor-pointer font-sans text-[13px] font-medium text-[#FF3B30] focus:bg-[#FF3B30] focus:text-white px-2 py-1.5 rounded-[0.5rem] outline-none transition-colors">
                   <Trash2 className="w-4 h-4" /> Delete
@@ -1628,6 +1638,8 @@ export default function VaultPage() {
   const [addLinkModalOpen, setAddLinkModalOpen] = useState(false)
   const [newFolderModalOpen, setNewFolderModalOpen] = useState(false)
   const [editItem, setEditItem] = useState<VaultItem | null>(null)
+  const [shareSources, setShareSources] = useState<ShareSource[]>([])
+  const [shareOpen, setShareOpen] = useState(false)
 
   // Drag and drop state
   const [activeDropZone, setActiveDropZone] = useState<string | null>(null) // folder id or "root"
@@ -1670,6 +1682,17 @@ export default function VaultPage() {
   }
 
   const queryClient = useQueryClient()
+
+  const sourceFor = (item: VaultItem): ShareSource => ({
+    kind: "vault",
+    vaultItemId: item.id,
+    name: item.item_type === "link" ? item.title || "Link" : item.files?.filename || "File",
+  })
+  const startShare = (items: VaultItem[]) => {
+    if (items.length === 0) return
+    setShareSources(items.map(sourceFor))
+    setShareOpen(true)
+  }
 
   // ── Queries ──────────────────────────────────────────────────────────────────
   const { data: allFolders = [], isLoading: foldersLoading } = useQuery<VaultFolder[]>({
@@ -1947,7 +1970,7 @@ export default function VaultPage() {
                     {selectedCommunityFilter ?
                       <><Filter className="w-4 h-4 text-[#0057FF]" /> <span className="max-w-[120px] truncate">{selectedCommunityFilter === "PERSONAL_ONLY" ? "Personal Vault Only" : availableCommunities.find(c => c.id === selectedCommunityFilter)?.name}</span></>
                       :
-                      <><Filter className="w-4 h-4" /> All Communities</>
+                      <><Filter className="w-4 h-4" /> All Groups</>
                     }
                   </button>
                 </DropdownMenuTrigger>
@@ -2120,6 +2143,7 @@ export default function VaultPage() {
                       onDelete={invalidateItems}
                       onEdit={(i) => setEditItem(i)}
                       onMove={(i) => setMoveItem({ type: "file", id: i.id })}
+                      onShare={(i) => startShare([i])}
                       onDropFile={handleInternalMove}
                       onDragOver={(id) => setActiveDropZone(id)}
                       onOpenWindow={handleOpenWindow}
@@ -2143,6 +2167,13 @@ export default function VaultPage() {
         </div>
       </div>
 
+      <ShareDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        sources={shareSources}
+        onShared={() => { clearSelection(); invalidateItems() }}
+      />
+
       {/* ── Bulk Action Bar ──────────────────────────────────────────────── */}
       <AnimatePresence>
         {(selectedItemIds.length > 0 || selectedFolderIds.length > 0) && (
@@ -2163,6 +2194,15 @@ export default function VaultPage() {
             >
               Cancel
             </button>
+            {selectedItemIds.length > 0 && (
+              <button
+                onClick={() => startShare(vaultItems.filter((i) => selectedItemIds.includes(i.id)))}
+                className="flex items-center gap-2 px-4 py-2 bg-[#FFD600] text-foreground rounded-[1rem] border-[2px] border-foreground shadow-[3px_3px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all font-heading font-bold text-[13px]"
+              >
+                <Share2 className="w-4 h-4" />
+                Share {selectedItemIds.length} to group
+              </button>
+            )}
             <button
               onClick={handleBulkDelete}
               className="flex items-center gap-2 px-4 py-2 bg-[#FF3B30] text-white rounded-[1rem] border-[2px] border-foreground shadow-[3px_3px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all font-heading font-bold text-[13px]"

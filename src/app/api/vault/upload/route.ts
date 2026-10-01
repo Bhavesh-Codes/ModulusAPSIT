@@ -20,6 +20,9 @@ export async function POST(request: Request) {
     if (tagsRaw) {
       try { initialTags = JSON.parse(tagsRaw); } catch { /* ignore bad JSON */ }
     }
+    // SHA-256 of the file, computed in the browser (used to spot duplicate shares)
+    const hashRaw = (formData.get("content_hash") as string | null)?.trim().toLowerCase() || null;
+    const contentHash = hashRaw && /^[a-f0-9]{64}$/.test(hashRaw) ? hashRaw : null;
     // Optional folder_id — null means root
     const folderId = (formData.get("folder_id") as string | null) || null;
 
@@ -84,6 +87,7 @@ export async function POST(request: Request) {
         owner_id: user.id,
         item_type: 'file',
         is_private: true,
+        ...(contentHash ? { content_hash: contentHash } : {}),
         ...(initialTags.length > 0 ? { tags: initialTags } : {}),
         ...(folderId ? { folder_id: folderId } : {}),
       })

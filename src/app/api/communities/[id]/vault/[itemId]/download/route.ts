@@ -17,28 +17,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const { searchParams } = new URL(request.url)
     const action = searchParams.get("action") ?? "view"
 
-    // Verify user is in the community or has global viewing rights
-    const { data: userProfile } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle()
-      
-    const systemRole = userProfile?.role || 'faculty'
-    const isGlobalViewer = systemRole.toLowerCase() === 'hod' || systemRole.toLowerCase() === 'dev'
-
-    if (!isGlobalViewer) {
-      const { data: member, error: memberError } = await supabase
-        .from('community_members')
-        .select('role')
-        .eq('community_id', communityId)
-        .eq('user_id', user.id)
-        .single()
-
-      if (memberError || !member || member.role === 'pending') {
-        return NextResponse.json({ error: "Access Denied. Join community to download." }, { status: 403 })
-      }
-    }
+    // Any logged-in user may view or download shared files, member or not.
 
     const adminSupabase = createAdminClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,

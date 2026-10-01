@@ -4,8 +4,8 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useParams, usePathname } from "next/navigation"
 import {
-  Loader2, Settings, UserMinus, UserPlus, Users, ArrowLeft,
-  Shield, Globe, Lock, User, Clock, Star,
+  Loader2, UserMinus, UserPlus, Users, ArrowLeft,
+  Shield, User,
   FolderSync,
   ChevronLeft, ChevronRight, Menu, X,
 } from "lucide-react"
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { useUiStore } from "@/lib/stores/uiStore"
 import { CommunitySettingsModal } from "@/components/modules/CommunitySettingsModal"
-import { joinModule, leaveModule, getModuleMembers, updateMemberRole, removeMember } from "@/actions/modules"
+import { joinModule, leaveModule, getModuleMembers, removeMember } from "@/actions/modules"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -37,13 +37,7 @@ function getNavLinks(id: string) {
 
 // ─── Module App Sidebar ────────────────────────────────────────────────────
 
-function CommunitySidebar({
-  id,
-  isMember,
-}: {
-  id: string
-  isMember: boolean
-}) {
+function CommunitySidebar({ id }: { id: string }) {
   const {
     communitySidebarOpen,
     toggleCommunitySidebar,
@@ -53,8 +47,6 @@ function CommunitySidebar({
 
   const pathname = usePathname()
   const navLinks = getNavLinks(id)
-
-  if (!isMember) return null
 
   const width = communitySidebarOpen ? SIDEBAR_OPEN_WIDTH : SIDEBAR_COLLAPSED_WIDTH
 
@@ -204,13 +196,32 @@ function CommunitySidebar({
 
 // ─── Module Header ─────────────────────────────────────────────────────────
 
+function RoleBadge({ role, compact }: { role: string | undefined; compact?: boolean }) {
+  if (role !== "hod" && role !== "faculty") return null
+  const isHod = role === "hod"
+  const Icon = isHod ? Shield : User
+  const tone = isHod ? "bg-[#0057FF] text-white" : "bg-[#FFD600] text-foreground"
+  if (compact) {
+    return (
+      <span title={isHod ? "HOD" : "Faculty"} className={`flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] ${tone}`}>
+        <Icon className="w-4 h-4" />
+      </span>
+    )
+  }
+  return (
+    <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[2px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[13px] font-bold tracking-wide ${tone}`}>
+      <Icon className="w-4 h-4" />
+      {isHod ? "HOD" : "FACULTY"}
+    </span>
+  )
+}
+
 function CommunityHeader({
   community,
   id,
   isSubPage,
   isMember,
-  isOwner,
-  isPending,
+  canManage,
   role,
   onManageMembers,
   onMobileMenuOpen,
@@ -219,8 +230,7 @@ function CommunityHeader({
   id: string
   isSubPage: boolean
   isMember: boolean
-  isOwner: boolean
-  isPending: boolean
+  canManage: boolean
   role: string | undefined
   onManageMembers: () => void
   onMobileMenuOpen: () => void
@@ -230,12 +240,9 @@ function CommunityHeader({
   const joinMutation = useMutation({
     mutationFn: () => joinModule(id),
     onSuccess: () => {
-      if (community?.type === "Private") {
-        toast.success("Request sent!")
-      } else {
-        toast.success("Module joined!")
-      }
+      toast.success("Group joined!")
       queryClient.invalidateQueries({ queryKey: ["community", id] })
+      queryClient.invalidateQueries({ queryKey: ["communities"] })
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to join")
@@ -245,8 +252,9 @@ function CommunityHeader({
   const leaveMutation = useMutation({
     mutationFn: () => leaveModule(id),
     onSuccess: () => {
-      toast.success("Left module")
+      toast.success("Left group")
       queryClient.invalidateQueries({ queryKey: ["community", id] })
+      queryClient.invalidateQueries({ queryKey: ["communities"] })
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to leave")
@@ -259,7 +267,6 @@ function CommunityHeader({
       <header
         className="flex items-center bg-card border-[3px] border-foreground rounded-[1.5rem] shadow-[6px_6px_0px_black] px-5 py-3 gap-3 sticky top-4 z-40 shrink-0 transition-all duration-300 ease-in-out"
       >
-        {/* Back link */}
         <Link
           href={`/groups/${id}`}
           className="px-3 py-1.5 flex items-center justify-center gap-1.5 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all shrink-0"
@@ -269,7 +276,6 @@ function CommunityHeader({
           <span className="hidden md:inline">Back</span>
         </Link>
 
-        {/* Module name and member count */}
         <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 flex-1 overflow-hidden">
           <span className="font-heading font-extrabold text-foreground leading-none truncate text-[18px]">
             {community.name}
@@ -280,65 +286,28 @@ function CommunityHeader({
           </span>
         </div>
 
-        {/* Badges - compact icons */}
         <div className="flex items-center gap-2 shrink-0">
-          <span
-            title={community.type.toUpperCase()}
-            className={`flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] ${community.type === "Public"
-              ? "bg-[#00C853] text-white"
-              : "bg-[#FF6B00] text-white"
-              }`}
-          >
-            {community.type === "Public"
-              ? <Globe className="w-4 h-4" />
-              : <Lock className="w-4 h-4" />
-            }
-          </span>
-
-          {role === "owner" && (
-            <span title="Owner" className="flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] bg-[#0057FF] text-white">
-              <Shield className="w-4 h-4" />
-            </span>
-          )}
-          {role === "curator" && (
-            <span title="Curator" className="flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] bg-[#FF3CAC] text-white">
-              <Star className="w-4 h-4" />
-            </span>
-          )}
-          {role === "peer" && (
-            <span title="Peer" className="flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] bg-[#FFD600] text-foreground">
-              <User className="w-4 h-4" />
-            </span>
-          )}
-          {role === "pending" && (
-            <span title="Pending" className="flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] bg-muted text-foreground">
-              <Clock className="w-4 h-4" />
-            </span>
-          )}
+          <RoleBadge role={role} compact />
         </div>
 
-        {/* Mobile menu toggle */}
-        {isMember && (
-          <button
-            onClick={onMobileMenuOpen}
-            className="ml-auto flex items-center justify-center bg-card hover:bg-[#FFD600] border-[2px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-[8px] md:hidden shrink-0"
-            style={{ width: 36, height: 36 }}
-            title="Open apps"
-          >
-            <Menu style={{ width: 18, height: 18, color: "var(--foreground)" }} />
-          </button>
-        )}
+        <button
+          onClick={onMobileMenuOpen}
+          className="ml-auto flex items-center justify-center bg-card hover:bg-[#FFD600] border-[2px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-[8px] md:hidden shrink-0"
+          style={{ width: 36, height: 36 }}
+          title="Open apps"
+        >
+          <Menu style={{ width: 18, height: 18, color: "var(--foreground)" }} />
+        </button>
       </header>
     )
   }
 
-  // ── Expanded header (module home) ──────────────────────────────────────
+  // ── Expanded header (group home) ──────────────────────────────────────
   return (
     <header
       className="relative bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_black] overflow-hidden"
       style={{ transition: "all 0.3s ease" }}
     >
-      {/* Banner */}
       <div className="h-48 md:h-64 bg-[#FFD600] border-b-[3px] border-foreground relative flex items-center justify-center overflow-hidden">
         <div className="absolute top-4 left-4 w-12 h-12 rounded-full border-[3px] border-foreground bg-[#FF3CAC] -translate-x-2 -translate-y-2 pointer-events-none" />
         <div className="absolute bottom-4 right-4 w-16 h-16 border-[3px] border-foreground bg-[#0057FF] rotate-12 translate-x-2 translate-y-2 pointer-events-none" />
@@ -361,7 +330,6 @@ function CommunityHeader({
           </h1>
         )}
 
-        {/* Back to Groups button — overlaid top-left */}
         <Link
           href="/groups"
           className="absolute top-4 left-4 z-20 flex items-center gap-1.5 px-3 py-1.5 rounded-[0.875rem] border-[2px] border-[#0A0A0A] bg-[#FFFFFF] shadow-[3px_3px_0px_#0A0A0A] font-heading font-bold text-[13px] text-[#0A0A0A] hover:bg-[#FFD600] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
@@ -372,7 +340,6 @@ function CommunityHeader({
         </Link>
       </div>
 
-      {/* Info area */}
       <div className="p-6 md:p-8 flex flex-col md:flex-row gap-6 justify-between items-start">
         <div className="flex-1 space-y-4">
           <div className="flex items-center flex-wrap gap-3">
@@ -380,45 +347,9 @@ function CommunityHeader({
               {community.name}
             </h1>
 
-            <span
-              className={`shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[2px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[13px] font-bold tracking-wide ${community.type === "Public"
-                ? "bg-[#00C853] text-white"
-                : "bg-[#FF6B00] text-white"
-                }`}
-            >
-              {community.type === "Public"
-                ? <Globe className="w-4 h-4" />
-                : <Lock className="w-4 h-4" />
-              }
-              {community.type.toUpperCase()}
-            </span>
+            <RoleBadge role={role} />
 
-            {role === "owner" && (
-              <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-[12px] border-[2px] border-foreground shadow-[3px_3px_0px_black] font-mono text-[13px] font-bold tracking-wide bg-[#0057FF] text-white">
-                <Shield className="w-4 h-4" />
-                OWNER
-              </span>
-            )}
-            {role === "curator" && (
-              <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[2px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[13px] font-bold tracking-wide bg-[#FF3CAC] text-white">
-                <Star className="w-4 h-4" />
-                CURATOR
-              </span>
-            )}
-            {role === "peer" && (
-              <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[2px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[13px] font-bold tracking-wide bg-[#FFD600] text-foreground">
-                <User className="w-4 h-4" />
-                PEER
-              </span>
-            )}
-            {role === "pending" && (
-              <span className="shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[2px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[13px] font-bold tracking-wide bg-muted text-foreground">
-                <Clock className="w-4 h-4" />
-                PENDING
-              </span>
-            )}
-
-            {isOwner && (
+            {canManage && (
               <button
                 onClick={onManageMembers}
                 className="ml-auto md:ml-2 px-4 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-[#FFD600] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all flex items-center gap-2"
@@ -443,22 +374,11 @@ function CommunityHeader({
         </div>
 
         <div className="shrink-0 w-full md:w-auto flex flex-col items-stretch md:items-end gap-3 mt-4 md:mt-0 relative z-20">
-          {isOwner ? (
-            <button
-              disabled
-              className="px-6 py-3 rounded-[1rem] border-[3px] border-foreground bg-background font-heading font-bold text-[15px] text-foreground opacity-70 flex items-center justify-center gap-2 w-full md:w-auto"
-            >
+          {canManage ? (
+            <div className="px-6 py-3 rounded-[1rem] border-[3px] border-foreground bg-background font-heading font-bold text-[15px] text-foreground opacity-80 flex items-center justify-center gap-2 w-full md:w-auto">
               <Shield className="w-5 h-5" />
-              You are the Owner
-            </button>
-          ) : isPending ? (
-            <button
-              disabled
-              className="px-6 py-3 rounded-[1rem] border-[3px] border-foreground bg-muted shadow-[4px_4px_0px_black] font-heading font-bold text-[15px] text-foreground flex items-center justify-center gap-2 w-full md:w-auto opacity-70 cursor-not-allowed"
-            >
-              <Loader2 className="w-5 h-5 animate-spin" />
-              Request Pending...
-            </button>
+              You manage every group
+            </div>
           ) : isMember ? (
             <button
               onClick={() => {
@@ -487,25 +407,22 @@ function CommunityHeader({
               ) : (
                 <UserPlus className="w-5 h-5" />
               )}
-              {community.type === "Private" ? "Request to Join" : "Join Group"}
+              Join Group
             </button>
           )}
 
           <div className="flex gap-2 self-end md:self-auto mt-2">
-            {isOwner && (
-              <CommunitySettingsModal community={community} currentUserRole={role} />
+            {canManage && (
+              <CommunitySettingsModal community={community} />
             )}
 
-            {/* Mobile menu toggle on expanded header */}
-            {isMember && (
-              <button
-                onClick={onMobileMenuOpen}
-                className="w-12 h-12 rounded-[12px] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all flex items-center justify-center md:hidden"
-                title="Open apps"
-              >
-                <Menu className="w-5 h-5 text-foreground" />
-              </button>
-            )}
+            <button
+              onClick={onMobileMenuOpen}
+              className="w-12 h-12 rounded-[12px] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all flex items-center justify-center md:hidden"
+              title="Open apps"
+            >
+              <Menu className="w-5 h-5 text-foreground" />
+            </button>
           </div>
         </div>
       </div>
@@ -558,26 +475,21 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
     )
   }
 
-  const role = community.membership?.role
-  const isOwner = role === "owner"
-  const isPending = role === "pending"
-  const isMember = role === "owner" || role === "curator" || role === "peer"
+  const role = community.membership?.role as string | undefined
+  const isMember = !!community.membership
+  const canManage = !!community.can_manage
 
   // Detect sub-page: pathname is longer than "/groups/[id]"
   const groupRoot = `/groups/${id}`
   const isSubPage = pathname !== groupRoot && !pathname.endsWith(`/groups/${id}`) && pathname !== `/modules/${id}` && !pathname.endsWith(`/modules/${id}`)
 
-  // Sidebar width for content area right-padding (desktop only)
-  const sidebarWidth = isMember
-    ? communitySidebarOpen
-      ? SIDEBAR_OPEN_WIDTH
-      : SIDEBAR_COLLAPSED_WIDTH
-    : 0
+  // Sidebar width for content area right-padding (desktop only). Everyone can open the vault.
+  const sidebarWidth = communitySidebarOpen ? SIDEBAR_OPEN_WIDTH : SIDEBAR_COLLAPSED_WIDTH
 
   return (
     <>
       {/* Right-side App Sidebar */}
-      <CommunitySidebar id={id} isMember={isMember} />
+      <CommunitySidebar id={id} />
 
       {/* Page content — shifts left to not go under sidebar on desktop */}
       <div
@@ -591,8 +503,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
             id={id}
             isSubPage={isSubPage}
             isMember={isMember}
-            isOwner={isOwner}
-            isPending={isPending}
+            canManage={canManage}
             role={role}
             onManageMembers={() => setIsMembersModalOpen(true)}
             onMobileMenuOpen={() => setCommunitySidebarMobileOpen(true)}
@@ -606,7 +517,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
       </div>
 
       {/* Manage members modal */}
-      {isOwner && (
+      {canManage && (
         <ManageMembersModal
           isOpen={isMembersModalOpen}
           onClose={() => setIsMembersModalOpen(false)}
@@ -636,32 +547,6 @@ function ManageMembersModal({
     enabled: isOpen,
   })
 
-  const approveMutation = useMutation({
-    mutationFn: (userId: string) => updateMemberRole(communityId, userId, "peer"),
-    onMutate: async (userId: string) => {
-      await queryClient.cancelQueries({ queryKey: ["communityMembers", communityId] })
-      const previousMembers = queryClient.getQueryData(["communityMembers", communityId])
-      queryClient.setQueryData(["communityMembers", communityId], (old: any) => {
-        if (!old) return old
-        return old.map((m: any) =>
-          m.id === userId ? { ...m, role: "peer" } : m
-        )
-      })
-      return { previousMembers }
-    },
-    onError: (err: any, _v, context) => {
-      toast.error(err.message)
-      if (context?.previousMembers) {
-        queryClient.setQueryData(["communityMembers", communityId], context.previousMembers)
-      }
-    },
-    onSuccess: () => toast.success("Request approved!"),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["communityMembers", communityId] })
-      queryClient.invalidateQueries({ queryKey: ["community", communityId] })
-    },
-  })
-
   const kickMutation = useMutation({
     mutationFn: (userId: string) => removeMember(communityId, userId),
     onMutate: async (userId: string) => {
@@ -686,36 +571,6 @@ function ManageMembersModal({
     },
   })
 
-  const roleMutation = useMutation({
-    mutationFn: ({ userId, role }: { userId: string; role: string }) =>
-      updateMemberRole(communityId, userId, role),
-    onMutate: async ({ userId, role }) => {
-      await queryClient.cancelQueries({ queryKey: ["communityMembers", communityId] })
-      const previousMembers = queryClient.getQueryData(["communityMembers", communityId])
-      queryClient.setQueryData(["communityMembers", communityId], (old: any) => {
-        if (!old) return old
-        return old.map((m: any) => (m.id === userId ? { ...m, role } : m))
-      })
-      return { previousMembers }
-    },
-    onError: (err: any, _v, context) => {
-      toast.error(err.message)
-      if (context?.previousMembers) {
-        queryClient.setQueryData(["communityMembers", communityId], context.previousMembers)
-      }
-    },
-    onSuccess: () => toast.success("Role updated"),
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ["communityMembers", communityId] })
-      queryClient.invalidateQueries({ queryKey: ["community", communityId] })
-    },
-  })
-
-  const pendingMembers = members.filter((m: any) => m.role === "pending")
-  const activeMembers = members.filter(
-    (m: any) => m.role === "peer" || m.role === "owner" || m.role === "curator"
-  )
-
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) onClose() }}>
       <DialogContent className="bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_black] max-w-lg p-6 flex flex-col max-h-[85vh]">
@@ -728,146 +583,67 @@ function ManageMembersModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="overflow-y-auto pr-2 space-y-8 flex-1">
+        <div className="overflow-y-auto pr-2 space-y-4 flex-1">
           {isLoading ? (
             <div className="flex justify-center py-10">
               <Loader2 className="w-8 h-8 animate-spin text-foreground" />
             </div>
           ) : (
             <>
-              {/* Pending Requests */}
-              {pendingMembers.length > 0 && (
-                <div className="space-y-4">
-                  <h3 className="font-heading font-extrabold text-[16px] text-foreground flex items-center justify-between border-b-[2px] border-foreground pb-2 border-dashed">
-                    Pending Requests
-                    <span className="bg-[#FF6B00] text-white px-2 py-0.5 rounded-[100px] text-[12px] shadow-[2px_2px_0px_black] border-[1.5px] border-foreground">
-                      {pendingMembers.length}
-                    </span>
-                  </h3>
-                  <div className="space-y-3">
-                    {pendingMembers.map((m: any) => (
-                      <div
-                        key={m.id}
-                        className="flex items-center justify-between p-3 rounded-[1rem] border-[2px] border-foreground shadow-[4px_4px_0px_black] bg-card hover:-translate-y-1 transition-transform"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-[8px] bg-muted border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0">
-                            {m.profile_pic ? (
-                              <img src={m.profile_pic} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <UserPlus className="w-5 h-5 text-muted-foreground" />
-                            )}
-                          </div>
-                          <div>
-                            <div className="font-bold font-heading text-[15px] text-foreground line-clamp-1">
-                              {m.name || "Unknown User"}
-                            </div>
-                            <div className="font-sans text-[12px] text-muted-foreground">
-                              Requested {new Date(m.joined_at).toLocaleDateString()}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            disabled={approveMutation.isPending || kickMutation.isPending}
-                            onClick={() => kickMutation.mutate(m.id)}
-                            className="w-10 h-10 rounded-[8px] border-[2px] border-foreground bg-card hover:bg-[#FF3B30] hover:text-white transition-colors flex items-center justify-center shadow-[2px_2px_0px_black]"
-                          >
-                            <UserMinus className="w-4 h-4" />
-                          </button>
-                          <button
-                            disabled={approveMutation.isPending || kickMutation.isPending}
-                            onClick={() => approveMutation.mutate(m.id)}
-                            className="bg-[#00C853] text-white text-[14px] font-heading font-bold px-4 py-2 rounded-[8px] border-[2px] border-foreground shadow-[3px_3px_0px_black] hover:translate-y-[2px] hover:translate-x-[2px] hover:shadow-none transition-all flex items-center gap-1"
-                          >
-                            Approve
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+              <h3 className="font-heading font-extrabold text-[16px] text-foreground flex items-center justify-between border-b-[2px] border-foreground pb-2 border-dashed">
+                Members
+                <span className="bg-muted text-foreground px-2 py-0.5 rounded-[100px] text-[12px] shadow-[2px_2px_0px_black] border-[1.5px] border-foreground">
+                  {members.length}
+                </span>
+              </h3>
+              {members.length === 0 && (
+                <p className="font-sans text-[14px] text-muted-foreground">No members yet. Faculty can join from the group page.</p>
               )}
-
-              {/* Active Members */}
-              <div className="space-y-4">
-                <h3 className="font-heading font-extrabold text-[16px] text-foreground flex items-center justify-between border-b-[2px] border-foreground pb-2 border-dashed">
-                  Active Members
-                  <span className="bg-muted text-foreground px-2 py-0.5 rounded-[100px] text-[12px] shadow-[2px_2px_0px_black] border-[1.5px] border-foreground">
-                    {activeMembers.length}
-                  </span>
-                </h3>
-                <div className="space-y-3">
-                  {activeMembers.map((m: any) => (
-                    <div
-                      key={m.id}
-                      className="flex items-center justify-between p-3 rounded-[1rem] border-[2px] border-foreground bg-card hover:bg-background transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-[8px] bg-[#FFD600] border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0 shadow-[2px_2px_0px_black]">
-                          {m.profile_pic ? (
-                            <img src={m.profile_pic} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="font-bold font-heading text-[16px] text-foreground">
-                              {m.name?.[0]?.toUpperCase()}
+              <div className="space-y-3">
+                {members.map((m: any) => (
+                  <div
+                    key={m.id}
+                    className="flex items-center justify-between gap-3 p-3 rounded-[1rem] border-[2px] border-foreground bg-card hover:bg-background transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-[8px] bg-[#FFD600] border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0 shadow-[2px_2px_0px_black]">
+                        {m.profile_pic ? (
+                          <img src={m.profile_pic} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="font-bold font-heading text-[16px] text-foreground">
+                            {m.name?.[0]?.toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-bold text-[14px] font-heading text-foreground line-clamp-1 flex items-center gap-2">
+                          {m.name || "Unknown User"}
+                          {m.role === "hod" && (
+                            <span className="text-[10px] bg-[#0057FF] text-white border-[1.5px] border-foreground px-1.5 rounded-[100px] font-bold tracking-widest uppercase">
+                              HOD
                             </span>
                           )}
                         </div>
-                        <div>
-                          <div className="font-bold text-[14px] font-heading text-foreground line-clamp-1 flex items-center gap-2">
-                            {m.name || "Unknown User"}
-                            {m.role === "owner" && (
-                              <span className="text-[10px] bg-[#FFD600] border-[1.5px] border-foreground shadow-[1px_1px_0px_black] px-1.5 rounded-[100px] font-bold tracking-widest uppercase">
-                                Owner
-                              </span>
-                            )}
-                          </div>
-                          <div className="font-sans text-[12px] text-muted-foreground mt-0.5">
-                            Joined {new Date(m.joined_at).toLocaleDateString()}
-                          </div>
+                        <div className="font-sans text-[12px] text-muted-foreground mt-0.5">
+                          Joined {new Date(m.joined_at).toLocaleDateString()}
                         </div>
                       </div>
-                      {m.role !== "owner" ? (
-                        <div className="flex items-center gap-2">
-                          <select
-                            disabled={roleMutation.isPending}
-                            value={m.role}
-                            onChange={(e) =>
-                              roleMutation.mutate({ userId: m.id, role: e.target.value })
-                            }
-                            className="px-3 py-1.5 rounded-[8px] border-[2px] border-foreground shadow-[2px_2px_0px_black] bg-card text-[13px] font-bold font-sans outline-none focus:translate-x-[2px] focus:translate-y-[2px] focus:shadow-none transition-all cursor-pointer disabled:opacity-50 appearance-none pr-8 relative hover:bg-background"
-                            style={{
-                              backgroundImage: `url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%230A0A0A%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22/%3E%3C/svg%3E")`,
-                              backgroundRepeat: "no-repeat",
-                              backgroundPosition: "right 0.7rem top 50%",
-                              backgroundSize: "0.65rem auto",
-                            }}
-                          >
-                            <option value="owner">Owner</option>
-                            <option value="curator">Curator</option>
-                            <option value="peer">Peer</option>
-                          </select>
-                          <button
-                            disabled={kickMutation.isPending}
-                            onClick={() => {
-                              if (window.confirm("Are you sure you want to kick this member?")) {
-                                kickMutation.mutate(m.id)
-                              }
-                            }}
-                            title="Remove User"
-                            className="w-8 h-8 rounded-[8px] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[2px_2px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center disabled:opacity-50"
-                          >
-                            <UserMinus className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="text-[12px] font-bold text-muted-foreground">
-                          Owner (Immutable)
-                        </div>
-                      )}
                     </div>
-                  ))}
-                </div>
+                    <button
+                      disabled={kickMutation.isPending}
+                      onClick={() => {
+                        if (window.confirm("Remove this member from the group?")) {
+                          kickMutation.mutate(m.id)
+                        }
+                      }}
+                      title="Remove member"
+                      aria-label="Remove member"
+                      className="w-8 h-8 shrink-0 rounded-[8px] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[2px_2px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center justify-center disabled:opacity-50"
+                    >
+                      <UserMinus className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
               </div>
             </>
           )}
