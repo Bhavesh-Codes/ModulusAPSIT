@@ -5,15 +5,15 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 
 const plusJakartaSans = Plus_Jakarta_Sans({ 
-  subsets: ["latin"], weight: ["700", "800"], variable: "--font-heading" 
+  subsets: ["latin"], weight: ["700", "800"], variable: "--font-jakarta" 
 });
 
 const beVietnamPro = Be_Vietnam_Pro({ 
-  subsets: ["latin"], weight: ["400", "500"], variable: "--font-sans" 
+  subsets: ["latin"], weight: ["400", "500"], variable: "--font-vietnam" 
 });
 
 const spaceGrotesk = Space_Grotesk({ 
-  subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" 
+  subsets: ["latin"], weight: ["400", "500"], variable: "--font-grotesk" 
 });
 
 export const metadata: Metadata = {
@@ -27,9 +27,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${plusJakartaSans.variable} ${beVietnamPro.variable} ${spaceGrotesk.variable}`}
+    >
       <body
-        className={`${plusJakartaSans.variable} ${beVietnamPro.variable} ${spaceGrotesk.variable} bg-background text-foreground font-sans antialiased`}
+        className="bg-background text-foreground font-sans antialiased"
       >
         <ThemeProvider>
           <QueryProvider>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { MotionConfig } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 
 import LandingNav from "@/components/landing/LandingNav";
@@ -9,7 +10,7 @@ import HeroSection from "@/components/landing/HeroSection";
 import ProblemSection from "@/components/landing/ProblemSection";
 import FeatureSection from "@/components/landing/FeatureSection";
 import HowItWorksSection from "@/components/landing/HowItWorksSection";
-import SocialProofSection from "@/components/landing/SocialProofSection";
+import DomainGroupsSection from "@/components/landing/DomainGroupsSection";
 import FinalCtaSection from "@/components/landing/FinalCtaSection";
 import LandingFooter from "@/components/landing/LandingFooter";
 
@@ -39,15 +40,17 @@ export default function HomePage() {
   }
 
   return (
-    <div className="min-h-screen bg-card text-foreground font-sans selection:bg-[#FFD600] selection:text-foreground overflow-x-hidden">
+    <div className="min-h-screen bg-card text-foreground font-sans selection:bg-[#FFD600] selection:text-foreground overflow-x-clip">
       <LandingNav />
       <main>
-        <HeroSection />
-        <ProblemSection />
-        <FeatureSection />
-        <HowItWorksSection />
-        <SocialProofSection />
-        <FinalCtaSection />
+        <MotionConfig reducedMotion="user">
+          <HeroSection />
+          <ProblemSection />
+          <FeatureSection />
+          <HowItWorksSection />
+          <DomainGroupsSection />
+          <FinalCtaSection />
+        </MotionConfig>
       </main>
       <LandingFooter />
     </div>

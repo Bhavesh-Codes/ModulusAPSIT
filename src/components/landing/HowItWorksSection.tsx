@@ -2,28 +2,28 @@
 
 import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { Folder, Users, Zap } from "lucide-react";
+import { Folder, Users, Search } from "lucide-react";
 
 const steps = [
   {
     num: "01",
-    title: "Create your Vault",
-    desc: "Upload notes, create rich text notes, organise with folders and tags. Everything private until you choose to share.",
+    title: "Sign in with your college email",
+    desc: "Access is limited to faculty of the IT department.",
     icon: Folder,
     side: "left"
   },
   {
     num: "02",
-    title: "Join or build a Community",
-    desc: "Find your course community or build one. Share resources, track tasks together, discuss anything.",
+    title: "Set up your vault and join your groups",
+    desc: "Upload your own material. Your domain groups are waiting for you.",
     icon: Users,
     side: "right"
   },
   {
     num: "03",
-    title: "Study together in real time",
-    desc: "Open a Study Circle, jump on voice or video, draw on a shared whiteboard, track your focus hours.",
-    icon: Zap,
+    title: "Share, tag and find",
+    desc: "Send a file from your vault to a group, tag it, and search for it whenever you need it.",
+    icon: Search,
     side: "left"
   }
 ];
@@ -38,13 +38,13 @@ export default function HowItWorksSection() {
   const pathLength = useTransform(scrollYProgress, [0, 1], [0, 1]);
 
   return (
-    <section ref={containerRef} className="py-32 bg-background w-full relative overflow-hidden">
+    <section id="how" ref={containerRef} className="scroll-mt-20 py-32 bg-background w-full relative overflow-hidden">
       <div className="max-w-[1280px] mx-auto px-4 md:px-8 relative z-10">
         
         <div className="text-center mb-24">
-          <h1 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-foreground">
-            From signup to studying in three steps.
-          </h1>
+          <h2 className="font-display font-extrabold text-4xl sm:text-5xl lg:text-6xl text-foreground">
+            Start sharing in three steps.
+          </h2>
         </div>
 
         <div className="relative max-w-4xl mx-auto">
@@ -57,7 +57,8 @@ export default function HowItWorksSection() {
             >
               <line 
                 x1="5" y1="0" x2="5" y2="100" 
-                stroke="rgba(10, 10, 10, 0.2)" 
+                stroke="var(--foreground)" 
+                strokeOpacity={0.3}
                 strokeWidth="2" 
                 strokeDasharray="4 4" 
               />
@@ -71,7 +72,7 @@ export default function HowItWorksSection() {
           </div>
 
           <div className="flex flex-col gap-12 md:gap-32 w-full relative z-10 py-10">
-            {steps.map((step, idx) => {
+            {steps.map((step) => {
               const isLeft = step.side === "left";
               return (
                 <div 
@@ -83,7 +84,7 @@ export default function HowItWorksSection() {
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true, margin: "-150px" }}
                     transition={{ duration: 0.5, ease: "easeOut" }}
-                    className={`w-full md:w-[45%] bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_black] p-8 md:p-12 relative overflow-hidden`}
+                    className={`w-full md:w-[45%] bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_var(--shadow-color)] p-8 md:p-12 relative overflow-hidden`}
                   >
                     {/* Watermark Number */}
                     <div className="absolute -bottom-10 -right-6 font-display font-extrabold text-[12rem] leading-none text-foreground/5 select-none pointer-events-none">
@@ -91,7 +92,7 @@ export default function HowItWorksSection() {
                     </div>
 
                     <div className="relative z-10">
-                      <div className="w-16 h-16 rounded-[1rem] bg-[#FFD600] border-2 border-foreground flex items-center justify-center mb-8 shadow-[4px_4px_0px_black]">
+                      <div className="w-16 h-16 rounded-[1rem] bg-[#FFD600] border-2 border-foreground flex items-center justify-center mb-8 shadow-[4px_4px_0px_var(--shadow-color)]">
                         <step.icon className="w-8 h-8 text-foreground" />
                       </div>
                       <h3 className="font-display font-bold text-2xl lg:text-3xl mb-4 text-foreground">
