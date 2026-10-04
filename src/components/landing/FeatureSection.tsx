@@ -3,7 +3,13 @@
 import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useInView, useReducedMotion } from "framer-motion";
 import { Copy, Users, Search, CheckCircle2, FileText, Image as ImageIcon, Link as LinkIcon, Files } from "lucide-react";
-import { FILE_TYPES, type FileType } from "./fileTypes";
+type FileType = "pdf" | "img" | "link";
+
+const FILE_TYPES = {
+  pdf: { label: "PDF", icon: FileText, tile: "bg-[#0057FF]" },
+  img: { label: "Image", icon: ImageIcon, tile: "bg-[#FF3CAC]" },
+  link: { label: "Link", icon: LinkIcon, tile: "bg-[#FF6B00]" },
+} as const;
 
 // Individual Mini Mockups
 
@@ -100,15 +106,15 @@ function GroupMockup() {
   };
 
   const members = [
-    { initials: "AK", bg: "bg-[#FFD600]" },
-    { initials: "PS", bg: "bg-card" },
-    { initials: "RN", bg: "bg-[#FF3CAC]" },
+    { initials: "SA", bg: "bg-[#FFD600]" },
+    { initials: "SB", bg: "bg-card" },
+    { initials: "AA", bg: "bg-[#FF3CAC]" },
   ];
 
   const shared: { type: FileType; title: string; by: string; tag: string }[] = [
-    { type: "pdf", title: "Unit 4 – Neural Networks.pdf", by: "Prof. R. Nair", tag: "Lecture" },
-    { type: "link", title: "Open datasets for class use", by: "Prof. S. Varma", tag: "Datasets" },
-    { type: "img", title: "CNN architecture diagram.png", by: "Prof. A. Pillai", tag: "Diagram" },
+    { type: "pdf", title: "Deep Learning & Neural Networks.pdf", by: "Dr. S. Aneesh", tag: "Lecture" },
+    { type: "link", title: "AIML Benchmark Datasets & Model Zoo", by: "Prof. A. Aher", tag: "AIML" },
+    { type: "img", title: "ML Algorithms Architecture.png", by: "Prof. S. Balpande", tag: "Diagram" },
   ];
 
   return (
@@ -313,7 +319,7 @@ function SearchMockup() {
     <div
       ref={ref}
       aria-hidden="true"
-      className="w-full h-full min-h-[300px] bg-background rounded-[1.5rem] p-5 sm:p-6 border-2 border-foreground flex flex-col gap-4"
+      className="w-full h-full min-h-[300px] bg-background rounded-[1.5rem] p-4 sm:p-6 border-2 border-foreground flex flex-col gap-4"
     >
       {/* Search bar */}
       <div className="flex items-center gap-3 bg-card border-2 border-foreground rounded-xl px-3 py-2.5 shadow-[3px_3px_0px_var(--shadow-color)]">
@@ -360,7 +366,7 @@ function SearchMockup() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0, transition: { duration: 0.25, delay: i * 0.08 } }}
                 exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }}
-                className="flex items-center gap-3 bg-card border-2 border-foreground rounded-xl p-2.5"
+                className="flex items-center gap-3 bg-card border-2 border-foreground rounded-xl p-2.5 overflow-hidden"
               >
                 <div className={`w-8 h-8 shrink-0 rounded-md border-2 border-foreground flex items-center justify-center text-white ${ft.tile}`}>
                   <ft.icon className="w-4 h-4" />
@@ -370,10 +376,10 @@ function SearchMockup() {
                     <Highlight text={it.name} needle={needle} />
                   </div>
                   <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border border-foreground bg-secondary whitespace-nowrap">
+                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded border border-foreground bg-secondary truncate min-w-0">
                       {it.source}
                     </span>
-                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full border border-foreground/40 bg-card text-muted-foreground whitespace-nowrap">
+                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded-full border border-foreground/40 bg-card text-muted-foreground whitespace-nowrap shrink-0">
                       <Highlight text={it.tag} needle={needle} />
                     </span>
                   </div>

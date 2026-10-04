@@ -127,9 +127,9 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
   const toggleCommunity = (id: string) =>
     setPicked(() => (selected.includes(id) ? selected.filter((x) => x !== id) : [...selected, id]))
 
-  // ── remember last-used subject / module ────────────────────────────────────
+  // ── remember last-used subject / module (only if in the selected community) ──
   useEffect(() => {
-    if (prefilled.current || !viewer.userId) return
+    if (prefilled.current || !viewer.userId || selected.length === 0) return
     prefilled.current = true
     try {
       const raw = localStorage.getItem(LAST_KEY)
@@ -141,6 +141,9 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
         .then((json) => {
           const d = json?.data
           if (!d || d.subject.merged_into_id) return
+          // Must belong to the currently selected group
+          const inSelected = d.community_ids?.some((c: string) => selected.includes(c))
+          if (!inSelected) return
           const moduleOk = last.moduleId === null || d.modules.some((m: { id: string }) => m.id === last.moduleId)
           setCls((prev) =>
             prev.subject
@@ -152,7 +155,22 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
     } catch {
       /* storage unavailable */
     }
-  }, [viewer.userId])
+  }, [viewer.userId, selected])
+
+  // Reset subject if community selection changes and current subject is not in it
+  useEffect(() => {
+    if (!cls.subject || selected.length === 0) return
+    fetch(`/api/subjects/${cls.subject.id}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((json) => {
+        const d = json?.data
+        if (d && !d.community_ids?.some((c: string) => selected.includes(c))) {
+          setCls((prev) => ({ ...prev, subject: null, moduleChoice: undefined }))
+        }
+      })
+      .catch(() => {})
+  }, [selected, cls.subject])
+
 
   // ── tag suggestions ───────────────────────────────────────────────────────
   const { data: tagSuggestions = [] } = useQuery<string[]>({

@@ -94,7 +94,14 @@ export function SubjectPicker({
           <span className="font-sans text-[14px] font-medium truncate">{subjectLabel(value)}</span>
         </div>
         {!disabled && (
-          <button type="button" onClick={() => setOpen(true)} className={btnSm}>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(true)
+              onChange(null)
+            }}
+            className={btnSm}
+          >
             Change
           </button>
         )}
@@ -102,7 +109,9 @@ export function SubjectPicker({
     )
   }
 
-  const results = data ?? []
+  const results = (data ?? []).filter(
+    (s) => communityIds.length === 0 || s.community_ids.some((c) => communityIds.includes(c))
+  )
   const searched = open && !isFetching && !isError && data !== undefined
   // Only offer creation once the user has looked at the matches for a real query.
   const canOfferCreate = allowCreate && searched && debounced.trim().length >= 2
@@ -121,9 +130,20 @@ export function SubjectPicker({
           onFocus={() => setOpen(true)}
           placeholder={disabled ? "Choose a community first" : "Search by subject name or code…"}
           aria-label="Search subjects"
-          className={`${inputCls} pl-9`}
+          className={`${inputCls} pl-9 pr-8`}
         />
-        {value && (
+        {query ? (
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("")
+            }}
+            aria-label="Clear search"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        ) : value ? (
           <button
             type="button"
             onClick={() => {
@@ -135,7 +155,7 @@ export function SubjectPicker({
           >
             <X className="w-4 h-4" />
           </button>
-        )}
+        ) : null}
       </div>
 
       {open && !disabled && !creating && (
@@ -148,7 +168,7 @@ export function SubjectPicker({
             <div className="p-3 text-[13px] text-[#FF3B30]">Could not search subjects. Try again.</div>
           ) : results.length === 0 ? (
             <div className="p-3 text-[13px] text-muted-foreground">
-              {debounced.trim() ? "No subject matches that search." : "Start typing a subject name or code."}
+              {debounced.trim() ? "No subject matches that search in this group." : "Start typing a subject name or code."}
             </div>
           ) : (
             <ul>
@@ -162,7 +182,7 @@ export function SubjectPicker({
                       className="w-full text-left px-3 py-2 hover:bg-[#FFD600]/30 flex items-center justify-between gap-2 border-b border-border last:border-b-0"
                     >
                       <span className="font-sans text-[14px] font-medium">{subjectLabel(s)}</span>
-                      {inGroup && (
+                      {inGroup && communityIds.length > 1 && (
                         <span className="shrink-0 font-mono text-[10px] font-bold px-2 py-0.5 rounded-full border border-foreground bg-background">
                           In this group
                         </span>
@@ -173,6 +193,7 @@ export function SubjectPicker({
               })}
             </ul>
           )}
+
           {canOfferCreate && (
             <button
               type="button"

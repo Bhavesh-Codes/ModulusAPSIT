@@ -31,13 +31,15 @@ export async function searchSubjects(
   const text = cleanSearch(q)
   let query = admin.from("subjects").select(SUBJECT_COLUMNS).is("merged_into_id", null)
 
-  if (text) {
-    query = query.or(`name.ilike.%${text}%,short_name.ilike.%${text}%,code.ilike.%${text}%`)
-  } else if (communityIds.length > 0) {
+  if (communityIds.length > 0) {
     const { data: links } = await admin.from("subject_domains").select("subject_id").in("community_id", communityIds)
     const ids = Array.from(new Set((links ?? []).map((l) => l.subject_id)))
     if (ids.length === 0) return []
     query = query.in("id", ids)
+  }
+
+  if (text) {
+    query = query.or(`name.ilike.%${text}%,short_name.ilike.%${text}%,code.ilike.%${text}%`)
   }
 
   const { data, error } = await query.order("name", { ascending: true }).limit(limit)
@@ -45,14 +47,8 @@ export async function searchSubjects(
 
   const subjects = (data ?? []) as Subject[]
   const domains = await domainMap(admin, subjects.map((s) => s.id))
-  const result = subjects.map((s) => ({ ...s, community_ids: domains.get(s.id) ?? [] }))
+  return subjects.map((s) => ({ ...s, community_ids: domains.get(s.id) ?? [] }))
 
-  // Subjects already in one of the selected communities come first.
-  if (communityIds.length > 0) {
-    const inGroup = (s: SubjectSearchResult) => s.community_ids.some((c) => communityIds.includes(c))
-    result.sort((a, b) => Number(inGroup(b)) - Number(inGroup(a)))
-  }
-  return result
 }
 
 export async function getSubjectDetail(admin: AdminClient, id: string) {
