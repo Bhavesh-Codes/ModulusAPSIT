@@ -133,9 +133,25 @@ export default function DomainGroupsSection() {
       ) : (
         /* ANIMATION MODE (animation on): Smooth continuous scrolling marquee */
         <div className="relative w-full overflow-hidden py-5">
-          <div className="animate-marquee">
+          <div
+            className="flex flex-row flex-nowrap w-max animate-marquee hover:[animation-play-state:paused]"
+            style={{
+              display: "flex",
+              flexDirection: "row",
+              flexWrap: "nowrap",
+              width: "max-content",
+            }}
+          >
             {[0, 1].map((copy) => (
-              <ul key={copy} aria-hidden={copy === 1} className="flex items-stretch gap-5 pr-5">
+              <ul
+                key={copy}
+                aria-hidden={copy === 1}
+                className="flex shrink-0 items-stretch gap-5 pr-5"
+                style={{
+                  display: "flex",
+                  flexShrink: 0,
+                }}
+              >
                 {groups.map((g) => (
                   <GroupCard key={g.name} {...g} />
                 ))}

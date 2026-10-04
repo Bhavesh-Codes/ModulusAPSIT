@@ -67,7 +67,7 @@ function LoginFormContent() {
 
   const watchedEmail = form.watch("email")
   const watchedPassword = form.watch("password")
-  
+
   const signupUrl = `/signup?email=${encodeURIComponent(watchedEmail || "")}&password=${encodeURIComponent(watchedPassword || "")}${redirectTarget !== "/vault" ? `&redirectTo=${encodeURIComponent(redirectTarget)}` : ""}`
 
   async function onSubmit(data: LoginFormValues) {
@@ -105,15 +105,25 @@ function LoginFormContent() {
   }
 
   return (
-    <div className="bg-card p-8 rounded-[24px] border-[2px] border-foreground shadow-[4px_4px_0px_black]">
-      <div className="mb-8">
-        <h2 className="font-heading font-bold text-[28px] text-foreground mb-2">Welcome Back</h2>
-        <p className="font-sans text-[16px] text-muted-foreground">Enter your details to access your vault.</p>
+    <div className="bg-card p-5 sm:p-8 rounded-[20px] sm:rounded-[24px] border-[3px] border-foreground shadow-[5px_5px_0px_var(--shadow-color)] w-full">
+      <div className="mb-6">
+        <h2 className="font-display font-extrabold text-2xl sm:text-3xl text-foreground tracking-tight">
+          Welcome Back
+        </h2>
+        <p className="font-sans text-sm text-muted-foreground mt-1">
+          Enter your details to access your account.
+        </p>
       </div>
 
       <div className="space-y-6">
-        <Button variant="secondary" className="w-full" onClick={onGoogleSignIn} type="button" disabled={isLoading}>
-          <svg className="mr-2 h-5 w-5" viewBox="0 0 24 24">
+        <Button
+          variant="secondary"
+          className="w-full h-12 bg-card border-2 border-foreground text-foreground font-display font-bold text-sm sm:text-base shadow-[3px_3px_0px_var(--shadow-color)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none hover:bg-secondary active:translate-x-[3px] active:translate-y-[3px] transition-all rounded-[12px] flex items-center justify-center cursor-pointer px-3"
+          onClick={onGoogleSignIn}
+          type="button"
+          disabled={isLoading}
+        >
+          <svg className="mr-2 h-5 w-5 shrink-0" viewBox="0 0 24 24">
             <path
               d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
               fill="#4285F4"
@@ -132,35 +142,43 @@ function LoginFormContent() {
             />
             <path d="M1 1h22v22H1z" fill="none" />
           </svg>
-          Sign in with Google
+          <span className="truncate">Continue with Google(College ID)</span>
         </Button>
 
-        <div className="relative">
+        <div className="relative my-5">
           <div className="absolute inset-0 flex items-center">
-            <span className="w-full border-t border-border" />
+            <span className="w-full border-t-2 border-foreground/15" />
           </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="bg-card px-2 font-mono text-muted-foreground/70">OR CONTINUE WITH</span>
+          <div className="relative flex justify-center text-xs">
+            <span className="bg-card px-3 font-mono font-bold tracking-wider text-muted-foreground uppercase">
+              OR SIGN IN WITH EMAIL
+            </span>
           </div>
         </div>
 
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
+              Institutional Email
+            </Label>
             <Input
               id="email"
-              placeholder="name@college.edu"
+              type="email"
+              placeholder="e.g. name@apsit.edu.in"
               {...form.register("email")}
-              className={form.formState.errors.email ? "border-[#FF3B30]" : ""}
+              className={`h-12 rounded-[12px] border-2 border-foreground bg-background px-3.5 text-foreground font-sans placeholder:text-muted-foreground/80 placeholder:font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:border-foreground focus-visible:shadow-[3px_3px_0px_var(--shadow-color)] transition-all ${form.formState.errors.email ? "border-[#FF3B30] focus-visible:ring-[#FF3B30]" : ""
+                }`}
             />
             {form.formState.errors.email && (
-              <p className="font-sans text-[14px] text-[#FF3B30]">{form.formState.errors.email.message}</p>
+              <p className="font-sans text-xs font-semibold text-[#FF3B30] mt-1">{form.formState.errors.email.message}</p>
             )}
           </div>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-              <Label htmlFor="password">Password</Label>
-              <Link href="/reset" className="font-mono text-[12px] text-foreground underline hover:text-muted-foreground">
+              <Label htmlFor="password" className="font-display font-bold text-xs uppercase tracking-wider text-foreground">
+                Password
+              </Label>
+              <Link href="/reset" className="font-mono text-xs font-bold text-foreground underline hover:text-muted-foreground transition-colors">
                 Forgot password?
               </Link>
             </div>
@@ -168,20 +186,22 @@ function LoginFormContent() {
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
-                placeholder="••••••••"
+                placeholder="Enter your password"
                 {...form.register("password")}
-                className={`pr-10 ${form.formState.errors.password ? "border-[#FF3B30]" : ""}`}
+                className={`h-12 rounded-[12px] border-2 border-foreground bg-background px-3.5 pr-11 text-foreground font-sans placeholder:text-muted-foreground/80 placeholder:font-sans focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground focus-visible:ring-offset-2 focus-visible:border-foreground focus-visible:shadow-[3px_3px_0px_var(--shadow-color)] transition-all ${form.formState.errors.password ? "border-[#FF3B30] focus-visible:ring-[#FF3B30]" : ""
+                  }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer transition-colors p-1"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {form.formState.errors.password && (
-              <p className="font-sans text-[14px] text-[#FF3B30]">{form.formState.errors.password.message}</p>
+              <p className="font-sans text-xs font-semibold text-[#FF3B30] mt-1">{form.formState.errors.password.message}</p>
             )}
           </div>
 
@@ -192,17 +212,21 @@ function LoginFormContent() {
             </div>
           )}
 
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button
+            type="submit"
+            className="w-full h-12 bg-[#FFD600] border-2 border-foreground text-foreground font-display font-bold text-base rounded-[12px] shadow-[4px_4px_0px_var(--shadow-color)] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none hover:bg-[#FFD600]/90 transition-all focus-visible:ring-2 focus-visible:ring-foreground active:translate-x-[4px] active:translate-y-[4px] active:shadow-none cursor-pointer mt-2"
+            disabled={isLoading}
+          >
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Log In
+            Sign In
           </Button>
         </form>
       </div>
 
-      <div className="mt-8 text-center font-sans text-[14px] text-muted-foreground">
-        Don&apos;t have an account?{" "}
-        <Link href={signupUrl} className="text-foreground font-bold hover:underline">
-          Sign up
+      <div className="mt-8 pt-5 border-t border-foreground/15 text-center font-sans text-sm text-muted-foreground">
+        New faculty member{" "}
+        <Link href={signupUrl} className="text-foreground font-bold hover:underline underline-offset-4">
+          Create an account
         </Link>
       </div>
     </div>

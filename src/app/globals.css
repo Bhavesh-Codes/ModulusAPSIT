@@ -445,8 +445,10 @@
 }
 
 .animate-marquee {
-  display: flex;
-  width: max-content;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  width: max-content !important;
   animation: marquee 50s linear infinite;
   will-change: transform;
 }

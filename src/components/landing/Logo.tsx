@@ -17,7 +17,7 @@ export default function Logo({ src, alt, width, height, className = "" }: LogoPr
   const [failed, setFailed] = useState(false);
 
   return (
-    <span className={`inline-flex shrink-0 items-center bg-white rounded-lg p-1 ${className}`}>
+    <span className={`inline-flex shrink-0 items-center justify-center ${className}`}>
       {failed ? (
         <span
           role="img"
