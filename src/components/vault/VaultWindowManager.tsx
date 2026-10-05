@@ -7,12 +7,14 @@ import {
   ExternalLink,
   FileText,
   Image as ImageIcon,
+  Loader2,
   Maximize2,
   Minimize2,
   Minus,
   PlayCircle,
   X,
 } from "lucide-react"
+import { toast } from "sonner"
 import { useVaultWindowStore, type VaultWindow } from "@/lib/stores/useVaultWindowStore"
 
 type Bounds = {
@@ -208,6 +210,87 @@ function VaultWindowRenderer({
     window.addEventListener("mouseup", onUp)
   }
 
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const handleDownload = async () => {
+    if (isDownloading) return
+    setIsDownloading(true)
+    const toastId = toast.loading("Downloading file…")
+
+    const triggerViaIframe = (downloadUrl: string) => {
+      const iframe = document.createElement("iframe")
+      iframe.style.display = "none"
+      iframe.src = downloadUrl
+      document.body.appendChild(iframe)
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe)
+        }
+      }, 60000)
+    }
+
+    try {
+      // 1. If downloadEndpoint is provided, fetch the signed download URL (which has ResponseContentDisposition: attachment)
+      if (win.downloadEndpoint) {
+        try {
+          const res = await fetch(win.downloadEndpoint)
+          if (res.ok) {
+            const data = await res.json()
+            if (data.url) {
+              triggerViaIframe(data.url)
+              toast.success("Download started", { id: toastId })
+              return
+            }
+          }
+        } catch (epErr) {
+          console.warn("Failed to fetch downloadEndpoint, falling back to direct blob/proxy:", epErr)
+        }
+      }
+
+      // 2. If downloadUrl was explicitly provided
+      if (win.downloadUrl) {
+        triggerViaIframe(win.downloadUrl)
+        toast.success("Download started", { id: toastId })
+        return
+      }
+
+      // 3. Try direct blob fetch (works when CORS is enabled)
+      try {
+        const fileRes = await fetch(win.url)
+        if (fileRes.ok) {
+          const blob = await fileRes.blob()
+          const blobUrl = URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = blobUrl
+          let filename = win.title || "download"
+          if (!filename.includes(".")) {
+            if (win.type === "pdf") filename += ".pdf"
+            else if (win.type === "image") filename += ".jpg"
+          }
+          a.download = filename
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          setTimeout(() => URL.revokeObjectURL(blobUrl), 10000)
+          toast.success("Download started", { id: toastId })
+          return
+        }
+      } catch (blobErr) {
+        console.warn("Direct blob fetch was blocked, falling back to download proxy:", blobErr)
+      }
+
+      // 4. Server-side download proxy fallback
+      const proxyUrl = `/api/download?url=${encodeURIComponent(win.url)}&filename=${encodeURIComponent(win.title)}`
+      triggerViaIframe(proxyUrl)
+      toast.success("Download started", { id: toastId })
+    } catch (err: any) {
+      console.error("Download error:", err)
+      toast.error(err.message || "Download failed", { id: toastId })
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
   const fullscreenStyle = isFullscreen
     ? { width: "100%", height: "100%", borderRadius: 0, border: "none" }
     : { width: boundedSize.w, height: boundedSize.h }
@@ -282,17 +365,17 @@ function VaultWindowRenderer({
           </button>
           {(isImage || isPdf) && (
             <button
-              onClick={() => {
-                const a = document.createElement("a")
-                a.href = win.url
-                a.download = win.title
-                document.body.appendChild(a)
-                a.click()
-                document.body.removeChild(a)
-              }}
-              className="px-3 py-1.5 rounded-[0.75rem] border-[2px] border-[#333] bg-[#1A1A1A] hover:bg-[#222] text-white font-heading font-bold text-[12px] flex items-center gap-1.5 transition-all"
+              onClick={handleDownload}
+              disabled={isDownloading}
+              className="px-3 py-1.5 rounded-[0.75rem] border-[2px] border-[#333] bg-[#1A1A1A] hover:bg-[#222] text-white font-heading font-bold text-[12px] flex items-center gap-1.5 transition-all disabled:opacity-60"
+              title="Download file"
             >
-              <Download className="w-3.5 h-3.5" /> Download
+              {isDownloading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Download className="w-3.5 h-3.5" />
+              )}
+              Download
             </button>
           )}
           <button onClick={() => closeWindow(win.id)} className="w-8 h-8 rounded-[0.75rem] border-[2px] border-[#333] bg-[#1A1A1A] hover:bg-[#FF3B30] flex items-center justify-center transition-all">
@@ -342,7 +425,14 @@ export function VaultWindowManager() {
   const restoreWindow = useVaultWindowStore((state) => state.restoreWindow)
 
   return (
-    <div ref={workspaceRef} className="pointer-events-none fixed left-0 right-0 bottom-0 top-[64px] z-[180] overflow-hidden">
+    <div
+      ref={workspaceRef}
+      style={{
+        top: "var(--topnav-height, 64px)",
+        transition: "top 0.3s ease-in-out",
+      }}
+      className="pointer-events-none fixed left-0 right-0 bottom-0 z-[180] overflow-hidden"
+    >
       <AnimatePresence>
         {windows.length > 0 && (
           <motion.div

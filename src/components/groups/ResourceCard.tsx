@@ -90,7 +90,12 @@ export function ResourceCard({
       const signed = await accessUrl("view")
       const mime = resource.file?.mime_type ?? ""
       if (mime.startsWith("image/") || mime === "application/pdf") {
-        openWindow({ type: mime.startsWith("image/") ? "image" : "pdf", url: signed, title: resource.title })
+        openWindow({
+          type: mime.startsWith("image/") ? "image" : "pdf",
+          url: signed,
+          title: resource.file?.filename || resource.title,
+          downloadEndpoint: `/api/communities/${resource.community_id}/vault/${resource.id}/download?action=download`,
+        })
       } else {
         window.open(signed, "_blank", "noopener,noreferrer")
       }

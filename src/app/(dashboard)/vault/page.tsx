@@ -57,7 +57,7 @@ import { toast } from "sonner"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { motion, AnimatePresence, useDragControls, useMotionValue } from "framer-motion"
 import { useDragAndDrop } from "@/hooks/useDragAndDrop"
-import { useVaultWindowStore } from "@/lib/stores/useVaultWindowStore"
+import { useVaultWindowStore, type VaultWindow } from "@/lib/stores/useVaultWindowStore"
 import {
   createVaultFolder,
   updateVaultFolder,
@@ -79,16 +79,7 @@ interface NewFolderFormValues {
   name: string
 }
 
-export type WindowType = "pdf" | "image" | "youtube" | "drive_file" | "drive_folder"
 
-export interface VaultWindow {
-  id: string
-  type: WindowType
-  url: string
-  title: string
-  zIndex: number
-  isMinimized?: boolean
-}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 const FOLDER_COLORS = [
@@ -1330,7 +1321,8 @@ function FileCard({
         onOpenWindow({
           type: mimeType.startsWith("image/") ? "image" : "pdf",
           url: url,
-          title: item.files?.filename ?? "File"
+          title: item.files?.filename ?? "File",
+          downloadEndpoint: `/api/vault/items/${item.id}/download?action=download`,
         })
       } else {
         window.open(url, "_blank")

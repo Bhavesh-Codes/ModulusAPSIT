@@ -25,7 +25,6 @@ import { joinModule, leaveModule, getModuleMembers, removeMember } from "@/actio
 
 const SIDEBAR_OPEN_WIDTH = 240
 const SIDEBAR_COLLAPSED_WIDTH = 64
-const TOPNAV_HEIGHT = 64 // px — must match global nav bar height
 
 // ─── App nav links ────────────────────────────────────────────────────────────
 
@@ -93,11 +92,11 @@ function CommunitySidebar({ id }: { id: string }) {
     <aside
       style={{
         position: "fixed",
-        top: TOPNAV_HEIGHT,
+        top: "var(--topnav-height, 64px)",
         right: 0,
         width,
-        height: `calc(100vh - ${TOPNAV_HEIGHT}px)`,
-        transition: "width 0.25s ease",
+        height: "calc(100vh - var(--topnav-height, 64px))",
+        transition: "width 0.25s ease, top 0.3s ease, height 0.3s ease",
         // NOTE: no 'display' here — let className="hidden md:flex" control it
         // so that inline style doesn't override the hidden class on mobile.
         flexDirection: "column",
@@ -152,12 +151,12 @@ function CommunitySidebar({ id }: { id: string }) {
       <aside
         style={{
           position: "fixed",
-          top: TOPNAV_HEIGHT,
+          top: "var(--topnav-height, 64px)",
           right: 0,
           width: SIDEBAR_OPEN_WIDTH,
-          height: `calc(100vh - ${TOPNAV_HEIGHT}px)`,
+          height: "calc(100vh - var(--topnav-height, 64px))",
           transform: communitySidebarMobileOpen ? "translateX(0)" : "translateX(100%)",
-          transition: "transform 0.25s ease",
+          transition: "transform 0.25s ease, top 0.3s ease, height 0.3s ease",
           // NOTE: no 'display' here — 'flex' is in className so md:hidden can override
           flexDirection: "column",
           background: "var(--background)",

@@ -10,6 +10,8 @@ export interface VaultWindow {
   title: string
   zIndex: number
   isMinimized?: boolean
+  downloadEndpoint?: string
+  downloadUrl?: string
 }
 
 export type VaultWindowConfig = Omit<VaultWindow, "id" | "zIndex">
