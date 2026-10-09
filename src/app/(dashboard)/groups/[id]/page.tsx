@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { BookOpen, FolderSync, HelpCircle, Layers, Loader2, Search, Clock, ArrowRight } from "lucide-react"
+import { BookOpen, FolderSync, HelpCircle, Layers, Loader2, Search, Clock, ArrowRight, User } from "lucide-react"
 import { useCommunity, useCommunityResources, useCommunitySubjects } from "@/components/groups/useCommunityData"
 import { ResourceCard } from "@/components/groups/ResourceCard"
 import { EditShareDialog } from "@/components/groups/EditShareDialog"
@@ -13,10 +13,13 @@ import {
 } from "@/components/groups/ResourceFilters"
 import { useSubjectDetail } from "@/components/groups/ClassificationFields"
 import { toRomanSemester, type CommunityResource } from "@/types/groups"
+import { useUiStore } from "@/lib/stores/uiStore"
 
 export default function GroupLibraryPage() {
   const params = useParams()
   const id = params.id as string
+
+  const { selectedTeacher, setSelectedTeacher } = useUiStore()
 
   const { data: community } = useCommunity(id)
   const { data: resources = [], isLoading } = useCommunityResources(id)
@@ -29,13 +32,60 @@ export default function GroupLibraryPage() {
   const canManage = !!community?.can_manage
   const viewerId = community?.viewer_id ?? null
 
-  const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }))
+  const activeFilters = useMemo(
+    () => ({
+      ...filters,
+      uploader: selectedTeacher ?? filters.uploader,
+    }),
+    [filters, selectedTeacher]
+  )
+
+  const patch = (p: Partial<Filters>) => {
+    if ("uploader" in p) {
+      setSelectedTeacher(p.uploader || null)
+    }
+    setFilters((f) => ({ ...f, ...p }))
+  }
 
   // Modules of the chosen subject, for the module filter.
-  const subjectDetail = useSubjectDetail(filters.subjectId || null)
+  const subjectDetail = useSubjectDetail(activeFilters.subjectId || null)
 
-  const filtered = useMemo(() => applyFilters(resources, filters), [resources, filters])
-  const browsing = !hasResourceFilter(filters)
+  const filtered = useMemo(() => applyFilters(resources, activeFilters), [resources, activeFilters])
+  const browsing = !hasResourceFilter(activeFilters)
+
+  const groupedBySubject = useMemo(() => {
+    if (!selectedTeacher) return null
+    const groups: {
+      subject: { id: string; name: string; code: string | null } | null
+      items: CommunityResource[]
+    }[] = []
+
+    const subjectMap = new Map<string, { subject: any; items: CommunityResource[] }>()
+    const unsortedItems: CommunityResource[] = []
+
+    for (const r of filtered) {
+      if (r.subject) {
+        const existing = subjectMap.get(r.subject.id)
+        if (existing) {
+          existing.items.push(r)
+        } else {
+          const entry = { subject: r.subject, items: [r] }
+          subjectMap.set(r.subject.id, entry)
+          groups.push(entry)
+        }
+      } else {
+        unsortedItems.push(r)
+      }
+    }
+
+    groups.sort((a, b) => (a.subject?.name ?? "").localeCompare(b.subject?.name ?? ""))
+
+    if (unsortedItems.length > 0) {
+      groups.push({ subject: null, items: unsortedItems })
+    }
+
+    return groups
+  }, [filtered, selectedTeacher])
 
   const gridSubjects = useMemo(
     () =>
@@ -110,11 +160,11 @@ export default function GroupLibraryPage() {
       )}
 
       <ResourceFilters
-        filters={filters}
+        filters={activeFilters}
         onChange={patch}
         resources={resources}
         subjects={subjects}
-        modules={filters.subjectId ? subjectDetail.data?.modules : undefined}
+        modules={activeFilters.subjectId ? subjectDetail.data?.modules : undefined}
       />
 
       {browsing ? (
@@ -207,14 +257,87 @@ export default function GroupLibraryPage() {
           )}
         </>
       ) : (
-        <section aria-label="Results" className="space-y-4">
+        <section aria-label="Results" className="space-y-6">
+          {selectedTeacher && (
+            <div className="bg-[#FFD600] border-[3px] border-foreground rounded-[1.25rem] p-4 shadow-[4px_4px_0px_black] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[10px] bg-card border-[2px] border-foreground flex items-center justify-center font-heading font-extrabold text-[16px] text-foreground shadow-[2px_2px_0px_black]">
+                  {selectedTeacher[0]?.toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-heading font-extrabold text-[16px] text-foreground leading-tight">
+                    Notes by {selectedTeacher}
+                  </h3>
+                  <p className="font-mono text-[12px] text-foreground/80">
+                    {filtered.length} {filtered.length === 1 ? "note" : "notes"} in this domain
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedTeacher(null)}
+                className="px-3.5 py-1.5 rounded-[10px] border-[2px] border-foreground bg-card text-foreground font-heading font-bold text-[12px] shadow-[2px_2px_0px_black] hover:bg-background hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all self-start sm:self-auto"
+              >
+                Clear Filter (Show All)
+              </button>
+            </div>
+          )}
+
           <p className="font-mono text-[12px] text-muted-foreground flex items-center gap-1.5">
             <Search className="w-3.5 h-3.5" /> {filtered.length} result{filtered.length !== 1 ? "s" : ""}
           </p>
+
           {filtered.length === 0 ? (
             <div className="bg-background border-[2px] border-foreground rounded-[1.5rem] border-dashed p-12 text-center">
               <h3 className="font-heading font-bold text-[20px] mb-2">No results found</h3>
               <p className="font-sans text-[15px] text-muted-foreground">Try fewer filters, or tick “Show outdated &amp; archived”.</p>
+            </div>
+          ) : groupedBySubject ? (
+            <div className="space-y-8">
+              {groupedBySubject.map(({ subject, items }) => (
+                <section key={subject?.id || "unsorted"} className="space-y-4">
+                  <div className="flex items-center justify-between pb-2 border-b-[2px] border-foreground border-dashed">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-8 h-8 rounded-[8px] bg-[#0057FF] border-[2px] border-foreground flex items-center justify-center shadow-[2px_2px_0px_black]">
+                        <BookOpen className="w-4 h-4 text-white" />
+                      </div>
+                      <h3 className="font-heading font-bold text-[17px] text-foreground">
+                        {subject ? (
+                          <>
+                            {subject.code ? `${subject.code} · ` : ""}
+                            {subject.name}
+                          </>
+                        ) : (
+                          "Unsorted"
+                        )}
+                      </h3>
+                      <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background">
+                        {items.length} {items.length === 1 ? "note" : "notes"}
+                      </span>
+                    </div>
+                    {subject && (
+                      <Link
+                        href={`/groups/${id}/subjects/${subject.id}`}
+                        className="px-3 py-1 rounded-[8px] border-[1.5px] border-foreground bg-card text-foreground font-heading font-bold text-[12px] shadow-[2px_2px_0px_black] hover:bg-[#FFD600] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center gap-1.5"
+                      >
+                        Go to subject <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                    {items.map((r) => (
+                      <ResourceCard
+                        key={r.id}
+                        resource={r}
+                        viewerId={viewerId}
+                        canManage={canManage}
+                        showSubject={false}
+                        onEdit={setEditing}
+                      />
+                    ))}
+                  </div>
+                </section>
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">

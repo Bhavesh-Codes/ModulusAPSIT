@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
 import {
   Archive, BookOpen, Clock, Download, ExternalLink, Eye, Loader2, MoreVertical, Pencil, Pin, PinOff, PlayCircle,
@@ -249,14 +250,17 @@ export function ResourceCard({
         </h3>
 
         {showSubject && resource.subject && (
-          <p className="font-mono text-[11px] text-muted-foreground flex items-center gap-1 min-w-0">
+          <Link
+            href={`/groups/${resource.community_id}/subjects/${resource.subject.id}`}
+            className="font-mono text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 min-w-0 transition-colors"
+          >
             <BookOpen className="w-3 h-3 shrink-0" />
-            <span className="truncate">
+            <span className="truncate hover:underline">
               {resource.subject.code ? `${resource.subject.code} · ` : ""}
               {resource.subject.name}
               {resource.module ? ` › Module ${resource.module.number}` : ""}
             </span>
-          </p>
+          </Link>
         )}
 
         <div className="flex flex-wrap items-center gap-1.5">

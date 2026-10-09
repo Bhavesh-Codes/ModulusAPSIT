@@ -8,6 +8,9 @@ interface UiState {
   communitySidebarMobileOpen: boolean
   toggleCommunitySidebarMobile: () => void
   setCommunitySidebarMobileOpen: (open: boolean) => void
+  // Teacher / faculty filter in community
+  selectedTeacher: string | null
+  setSelectedTeacher: (teacher: string | null) => void
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -23,4 +26,7 @@ export const useUiStore = create<UiState>((set) => ({
     })),
   setCommunitySidebarMobileOpen: (open) =>
     set({ communitySidebarMobileOpen: open }),
+
+  selectedTeacher: null,
+  setSelectedTeacher: (teacher) => set({ selectedTeacher: teacher }),
 }))

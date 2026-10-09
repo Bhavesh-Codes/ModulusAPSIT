@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, GitMerge, ListOrdered, Loader2, Pencil, Star } from "lucide-react"
+import { ArrowLeft, GitMerge, ListOrdered, Loader2, Pencil, Star, User } from "lucide-react"
 import { useCommunity, useCommunityResources } from "@/components/groups/useCommunityData"
 import { useSubjectDetail } from "@/components/groups/ClassificationFields"
 import { ResourceCard } from "@/components/groups/ResourceCard"
@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { btnSm, dialogCls } from "@/components/groups/ui"
 import { RESOURCE_TYPES, toRomanSemester, type CommunityResource } from "@/types/groups"
 import { useViewer } from "@/hooks/useViewer"
+import { useUiStore } from "@/lib/stores/uiStore"
 
 function sortResources(list: CommunityResource[]) {
   return [...list].sort((a, b) => Number(b.is_pinned) - Number(a.is_pinned) || b.created_at.localeCompare(a.created_at))
@@ -41,6 +42,8 @@ export default function SubjectPage() {
   const [editingModules, setEditingModules] = useState(false)
   const [merging, setMerging] = useState(false)
 
+  const { selectedTeacher, setSelectedTeacher } = useUiStore()
+
   const canShare = !!community?.membership && community.membership.role !== "viewer"
   const canManage = !!community?.can_manage
   const viewerId = community?.viewer_id ?? null
@@ -52,10 +55,23 @@ export default function SubjectPage() {
     if (subject?.merged_into_id) router.replace(`/groups/${id}/subjects/${subject.merged_into_id}`)
   }, [subject?.merged_into_id, id, router])
 
-  const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }))
+  const effectiveFilters = useMemo(
+    () => ({
+      ...filters,
+      uploader: selectedTeacher ?? filters.uploader,
+    }),
+    [filters, selectedTeacher]
+  )
+
+  const patch = (p: Partial<Filters>) => {
+    if ("uploader" in p) {
+      setSelectedTeacher(p.uploader || null)
+    }
+    setFilters((f) => ({ ...f, ...p }))
+  }
 
   const forSubject = useMemo(() => allResources.filter((r) => r.subject?.id === subjectId), [allResources, subjectId])
-  const visible = useMemo(() => applyFilters(forSubject, { ...filters, subjectId: "" }), [forSubject, filters])
+  const visible = useMemo(() => applyFilters(forSubject, { ...effectiveFilters, subjectId: "" }), [forSubject, effectiveFilters])
 
   const pinned = sortResources(visible.filter((r) => r.is_pinned))
   const rest = visible.filter((r) => !r.is_pinned)
@@ -155,8 +171,26 @@ export default function SubjectPage() {
         </div>
       </div>
 
+      {selectedTeacher && (
+        <div className="bg-[#FFD600] border-[2px] border-foreground rounded-[1rem] p-3 shadow-[3px_3px_0px_black] flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-foreground" />
+            <span className="font-heading font-bold text-[14px] text-foreground">
+              Showing notes by {selectedTeacher} ({visible.length} in this subject)
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedTeacher(null)}
+            className="px-2.5 py-1 rounded-[6px] border-[1.5px] border-foreground bg-card text-foreground font-heading font-bold text-[11px] shadow-[2px_2px_0px_black] hover:bg-background transition-all"
+          >
+            Show All Faculty
+          </button>
+        </div>
+      )}
+
       <ResourceFilters
-        filters={filters}
+        filters={effectiveFilters}
         onChange={patch}
         resources={forSubject}
         modules={modules}
@@ -165,14 +199,31 @@ export default function SubjectPage() {
 
       {visible.length === 0 ? (
         <div className="bg-background border-[2px] border-foreground rounded-[1.5rem] border-dashed p-12 text-center">
-          <h3 className="font-heading font-bold text-[20px] mb-2">{forSubject.length === 0 ? "Nothing shared yet" : "No results"}</h3>
-          <p className="font-sans text-[15px] text-muted-foreground">
-            {forSubject.length === 0
-              ? canShare
-                ? "Be the first to share material for this subject."
-                : "Material appears here as members share it."
-              : "Try fewer filters, or tick “Show outdated & archived”."}
+          <h3 className="font-heading font-bold text-[20px] mb-2">
+            {selectedTeacher
+              ? `No notes by ${selectedTeacher} in this subject`
+              : forSubject.length === 0
+                ? "Nothing shared yet"
+                : "No results"}
+          </h3>
+          <p className="font-sans text-[15px] text-muted-foreground mb-4">
+            {selectedTeacher
+              ? `${selectedTeacher} hasn't uploaded any notes for this subject yet.`
+              : forSubject.length === 0
+                ? canShare
+                  ? "Be the first to share material for this subject."
+                  : "Material appears here as members share it."
+                : "Try fewer filters, or tick “Show outdated & archived”."}
           </p>
+          {selectedTeacher && (
+            <button
+              type="button"
+              onClick={() => setSelectedTeacher(null)}
+              className="px-3.5 py-1.5 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] text-foreground font-heading font-bold text-[12px] shadow-[2px_2px_0px_black] hover:bg-background transition-all"
+            >
+              Show all faculty notes in this subject
+            </button>
+          )}
         </div>
       ) : (
         <>

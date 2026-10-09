@@ -1,12 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useParams, usePathname } from "next/navigation"
 import {
   Loader2, UserMinus, UserPlus, Users, ArrowLeft,
   Shield, User, Crown,
-  FolderSync,
+  GraduationCap, FolderOpen,
   ChevronLeft, ChevronRight, Menu, X,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -22,21 +22,14 @@ import { CommunitySettingsModal } from "@/components/modules/CommunitySettingsMo
 import { joinModule, leaveModule, getModuleMembers, removeMember, updateMemberRole } from "@/actions/modules"
 import { normalizeCommunityRole } from "@/lib/roles"
 import { useViewer } from "@/hooks/useViewer"
+import { useCommunityResources } from "@/components/groups/useCommunityData"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const SIDEBAR_OPEN_WIDTH = 240
-const SIDEBAR_COLLAPSED_WIDTH = 64
+const SIDEBAR_OPEN_WIDTH = 260
+const SIDEBAR_COLLAPSED_WIDTH = 68
 
-// ─── App nav links ────────────────────────────────────────────────────────────
-
-function getNavLinks(id: string) {
-  return [
-    { label: "Group Vault", href: `/groups/${id}`, icon: FolderSync },
-  ]
-}
-
-// ─── Module App Sidebar ────────────────────────────────────────────────────
+// ─── Module Faculty Sidebar ──────────────────────────────────────────────────
 
 function CommunitySidebar({ id }: { id: string }) {
   const {
@@ -44,50 +37,204 @@ function CommunitySidebar({ id }: { id: string }) {
     toggleCommunitySidebar,
     communitySidebarMobileOpen,
     setCommunitySidebarMobileOpen,
+    selectedTeacher,
+    setSelectedTeacher,
   } = useUiStore()
-
-  const pathname = usePathname()
-  const navLinks = getNavLinks(id)
 
   const width = communitySidebarOpen ? SIDEBAR_OPEN_WIDTH : SIDEBAR_COLLAPSED_WIDTH
 
-  // Shared link renderer
-  const renderLinks = (collapsed: boolean) =>
-    navLinks.map(({ label, href, icon: Icon }) => {
-      const isActive = pathname.startsWith(href)
+  const { data: resources = [] } = useCommunityResources(id)
+  const { data: members = [] } = useQuery({
+    queryKey: ["communityMembers", id],
+    queryFn: () => getModuleMembers(id),
+  })
+
+  // Extract faculty members who belong to this domain and have uploaded files
+  const teacherList = useMemo(() => {
+    const map = new Map<string, { count: number; profilePic?: string | null }>()
+
+    // Map members by id and lowercase name for profile pic lookup
+    const memberMap = new Map<string, any>()
+    for (const m of members) {
+      if (m.id) memberMap.set(m.id, m)
+      if (m.name) memberMap.set(m.name.trim().toLowerCase(), m)
+    }
+
+    for (const r of resources) {
+      const name = r.uploaded_by_name?.trim()
+      if (!name) continue
+
+      const existing = map.get(name)
+      if (existing) {
+        existing.count += 1
+      } else {
+        const m = (r.shared_by_user_id ? memberMap.get(r.shared_by_user_id) : null) ||
+                  memberMap.get(name.toLowerCase())
+        map.set(name, {
+          count: 1,
+          profilePic: m?.profile_pic || null,
+        })
+      }
+    }
+
+    return Array.from(map.entries())
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        profilePic: data.profilePic,
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+  }, [resources, members])
+
+  const totalNotes = resources.length
+
+  const handleSelect = (teacherName: string | null) => {
+    setSelectedTeacher(teacherName)
+    setCommunitySidebarMobileOpen(false)
+  }
+
+  // Render list of items (expanded or collapsed)
+  const renderFacultyList = (collapsed: boolean) => {
+    if (collapsed) {
       return (
-        <Link
-          key={href}
-          href={href}
-          title={collapsed ? label : undefined}
-          onClick={() => setCommunitySidebarMobileOpen(false)}
+        <div className="flex flex-col items-center gap-3 py-2">
+          {/* All faculty button */}
+          <button
+            type="button"
+            onClick={() => handleSelect(null)}
+            title={`All Faculty (${totalNotes} notes)`}
+            aria-label="All Faculty"
+            className={`
+              flex items-center justify-center w-11 h-11 rounded-[10px] transition-all
+              border-[2px] border-foreground
+              ${selectedTeacher === null
+                ? "bg-[#FFD600] shadow-[2px_2px_0px_black] translate-x-[1px] translate-y-[1px]"
+                : "bg-card shadow-[2px_2px_0px_black] hover:bg-[#FFD600] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+              }
+            `}
+          >
+            <Users className="w-5 h-5 text-foreground" />
+          </button>
+
+          {/* Teacher buttons */}
+          {teacherList.map((t) => {
+            const isSelected = selectedTeacher === t.name
+            return (
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => handleSelect(isSelected ? null : t.name)}
+                title={`${t.name} (${t.count} ${t.count === 1 ? "note" : "notes"})`}
+                aria-label={t.name}
+                className={`
+                  relative flex items-center justify-center w-11 h-11 rounded-[10px] transition-all overflow-hidden
+                  border-[2px] border-foreground
+                  ${isSelected
+                    ? "bg-[#FFD600] shadow-[2px_2px_0px_black] ring-2 ring-foreground translate-x-[1px] translate-y-[1px]"
+                    : "bg-card shadow-[2px_2px_0px_black] hover:bg-[#FFD600] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none"
+                  }
+                `}
+              >
+                {t.profilePic ? (
+                  <img src={t.profilePic} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <span className="font-heading font-extrabold text-[14px] text-foreground">
+                    {t.name[0]?.toUpperCase()}
+                  </span>
+                )}
+                {isSelected && (
+                  <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-foreground" />
+                )}
+              </button>
+            )
+          })}
+        </div>
+      )
+    }
+
+    return (
+      <div className="flex flex-col gap-2.5 px-3 py-2">
+        {/* All faculty button */}
+        <button
+          type="button"
+          onClick={() => handleSelect(null)}
           className={`
-            relative flex items-center md:flex-1 gap-3 transition-all
-            ${collapsed ? "justify-center p-3 rounded-[1rem] mx-2" : "px-4 py-3 rounded-[1rem] mx-4"}
-            border-[2px] border-foreground shadow-[3px_3px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none
-            ${isActive
-              ? "bg-[#FFD600]"
-              : "bg-card"
+            w-full flex items-center gap-3 px-3 py-2.5 rounded-[1rem] transition-all text-left
+            border-[2px] border-foreground
+            ${selectedTeacher === null
+              ? "bg-[#FFD600] shadow-[3px_3px_0px_black] translate-x-[1px] translate-y-[1px]"
+              : "bg-card shadow-[2px_2px_0px_black] hover:bg-[#FFD600]/25 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
             }
           `}
-          style={{ minHeight: 48 }}
         >
-          <Icon
-            className="shrink-0"
-            style={{ width: 20, height: 20, color: "var(--foreground)" }}
-            strokeWidth={isActive ? 2.5 : 2}
-          />
-          {!collapsed && (
-            <span
-              className="font-sans text-[14px] text-foreground whitespace-nowrap overflow-hidden"
-              style={{ fontWeight: isActive ? 700 : 500 }}
-            >
-              {label}
-            </span>
+          <div className="w-9 h-9 rounded-[8px] bg-background border-[1.5px] border-foreground flex items-center justify-center shrink-0 shadow-[1px_1px_0px_black]">
+            <Users className="w-4 h-4 text-foreground" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <div className="font-heading font-bold text-[13px] text-foreground truncate">
+              All Faculty
+            </div>
+            <div className="font-mono text-[11px] text-muted-foreground">
+              {totalNotes} {totalNotes === 1 ? "note" : "notes"}
+            </div>
+          </div>
+          {selectedTeacher === null && (
+            <span className="w-2 h-2 rounded-full bg-foreground shrink-0 mr-1" />
           )}
-        </Link>
-      )
-    })
+        </button>
+
+        {teacherList.length === 0 ? (
+          <div className="p-4 text-center mt-2 rounded-[1rem] border-[2px] border-dashed border-foreground/40 bg-muted/40">
+            <FolderOpen className="w-6 h-6 mx-auto mb-1 text-muted-foreground" />
+            <p className="font-heading font-bold text-[12px] text-foreground">No faculty notes</p>
+            <p className="font-sans text-[11px] text-muted-foreground mt-0.5">
+              Faculty notes will appear here once uploaded.
+            </p>
+          </div>
+        ) : (
+          teacherList.map((t) => {
+            const isSelected = selectedTeacher === t.name
+            return (
+              <button
+                key={t.name}
+                type="button"
+                onClick={() => handleSelect(isSelected ? null : t.name)}
+                className={`
+                  w-full flex items-center gap-3 px-3 py-2.5 rounded-[1rem] transition-all text-left
+                  border-[2px] border-foreground
+                  ${isSelected
+                    ? "bg-[#FFD600] shadow-[3px_3px_0px_black] translate-x-[1px] translate-y-[1px]"
+                    : "bg-card shadow-[2px_2px_0px_black] hover:bg-[#FFD600]/25 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none"
+                  }
+                `}
+              >
+                <div className="w-9 h-9 rounded-[8px] bg-[#00E5FF] border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0 shadow-[1px_1px_0px_black]">
+                  {t.profilePic ? (
+                    <img src={t.profilePic} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="font-heading font-extrabold text-[14px] text-foreground">
+                      {t.name[0]?.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-heading font-bold text-[13px] text-foreground truncate" title={t.name}>
+                    {t.name}
+                  </div>
+                  <div className="font-mono text-[11px] text-muted-foreground">
+                    {t.count} {t.count === 1 ? "note" : "notes"}
+                  </div>
+                </div>
+                {isSelected && (
+                  <span className="w-2 h-2 rounded-full bg-foreground shrink-0 mr-1" />
+                )}
+              </button>
+            )
+          })
+        )}
+      </div>
+    )
+  }
 
   // Desktop sidebar (fixed right panel)
   const desktopSidebar = (
@@ -99,8 +246,6 @@ function CommunitySidebar({ id }: { id: string }) {
         width,
         height: "calc(100vh - var(--topnav-height, 64px))",
         transition: "width 0.25s ease, top 0.3s ease, height 0.3s ease",
-        // NOTE: no 'display' here — let className="hidden md:flex" control it
-        // so that inline style doesn't override the hidden class on mobile.
         flexDirection: "column",
         background: "var(--background)",
         borderLeft: "2px solid var(--foreground)",
@@ -109,15 +254,27 @@ function CommunitySidebar({ id }: { id: string }) {
       }}
       className="hidden md:flex shadow-[-4px_0_10px_rgba(0,0,0,0.05)]"
     >
-      {/* Toggle button */}
+      {/* Toggle button & Section header */}
       <div
-        className="shrink-0 flex items-center border-b-[2px] border-b-[var(--foreground)] bg-card shadow-sm mb-4"
+        className="shrink-0 flex items-center border-b-[2px] border-b-[var(--foreground)] bg-card shadow-sm"
         style={{
           height: 64,
-          justifyContent: communitySidebarOpen ? "flex-end" : "center",
+          justifyContent: communitySidebarOpen ? "space-between" : "center",
           padding: communitySidebarOpen ? "0 16px" : "0",
         }}
       >
+        {communitySidebarOpen && (
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-foreground" />
+            <span className="font-heading font-extrabold text-[13px] tracking-wide text-foreground">
+              Faculty Notes
+            </span>
+            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-[6px] border-[1.5px] border-foreground bg-muted">
+              {teacherList.length}
+            </span>
+          </div>
+        )}
+
         <button
           onClick={toggleCommunitySidebar}
           title={communitySidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
@@ -131,9 +288,9 @@ function CommunitySidebar({ id }: { id: string }) {
         </button>
       </div>
 
-      {/* Nav links */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col py-8 pb-12 gap-5">
-        {renderLinks(!communitySidebarOpen)}
+      {/* Faculty list */}
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col py-4 pb-12">
+        {renderFacultyList(!communitySidebarOpen)}
       </nav>
     </aside>
   )
@@ -159,7 +316,6 @@ function CommunitySidebar({ id }: { id: string }) {
           height: "calc(100vh - var(--topnav-height, 64px))",
           transform: communitySidebarMobileOpen ? "translateX(0)" : "translateX(100%)",
           transition: "transform 0.25s ease, top 0.3s ease, height 0.3s ease",
-          // NOTE: no 'display' here — 'flex' is in className so md:hidden can override
           flexDirection: "column",
           background: "var(--background)",
           borderLeft: "2px solid var(--foreground)",
@@ -168,10 +324,18 @@ function CommunitySidebar({ id }: { id: string }) {
         className="flex flex-col md:hidden shadow-[-4px_0_10px_rgba(0,0,0,0.05)]"
       >
         <div
-          className="shrink-0 flex items-center justify-between border-b-[2px] border-b-[var(--foreground)] bg-card px-4 mb-4"
+          className="shrink-0 flex items-center justify-between border-b-[2px] border-b-[var(--foreground)] bg-card px-4"
           style={{ height: 64 }}
         >
-          <span className="font-heading font-bold text-[15px] text-foreground">Apps</span>
+          <div className="flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-foreground" />
+            <span className="font-heading font-extrabold text-[14px] text-foreground">
+              Faculty Notes
+            </span>
+            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-[6px] border-[1.5px] border-foreground bg-muted">
+              {teacherList.length}
+            </span>
+          </div>
           <button
             onClick={() => setCommunitySidebarMobileOpen(false)}
             className="flex items-center justify-center bg-card hover:bg-[#FFD600] border-[2px] border-foreground shadow-[3px_3px_0_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all rounded-[10px]"
@@ -180,8 +344,8 @@ function CommunitySidebar({ id }: { id: string }) {
             <X style={{ width: 18, height: 18, color: "var(--foreground)" }} />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto flex flex-col py-8 pb-12 gap-5">
-          {renderLinks(false)}
+        <nav className="flex-1 overflow-y-auto flex flex-col py-4 pb-12">
+          {renderFacultyList(false)}
         </nav>
       </aside>
     </>
@@ -361,7 +525,7 @@ function CommunityHeader({
           onClick={onMobileMenuOpen}
           className="ml-auto flex items-center justify-center bg-card hover:bg-background border-[2px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-[8px] md:hidden shrink-0"
           style={{ width: 36, height: 36 }}
-          title="Open apps"
+          title="Faculty Notes"
         >
           <Menu style={{ width: 18, height: 18, color: "var(--foreground)" }} />
         </button>
@@ -379,8 +543,17 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
 
   const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
 
-  const { communitySidebarOpen, communitySidebarMobileOpen, setCommunitySidebarMobileOpen } =
-    useUiStore()
+  const {
+    communitySidebarOpen,
+    communitySidebarMobileOpen,
+    setCommunitySidebarMobileOpen,
+    setSelectedTeacher,
+  } = useUiStore()
+
+  useEffect(() => {
+    // Reset teacher filter when changing communities
+    setSelectedTeacher(null)
+  }, [id, setSelectedTeacher])
 
   const viewer = useViewer()
 
