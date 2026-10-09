@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, Shield, UserMinus, Trash2, Loader2, ImagePlus } from "lucide-react"
+import { Settings, Shield, UserMinus, Trash2, Loader2, ImagePlus, Crown, User } from "lucide-react"
 import { toast } from "sonner"
 import {
   Dialog,
@@ -23,8 +23,11 @@ import {
   updateModuleDetails,
   getModuleMembers,
   removeMember,
+  updateMemberRole,
   deleteModule
 } from "@/actions/modules"
+import { normalizeCommunityRole } from "@/lib/roles"
+import { useViewer } from "@/hooks/useViewer"
 
 interface CommunitySettingsModalProps {
   community: any
@@ -33,6 +36,7 @@ interface CommunitySettingsModalProps {
 // Only rendered for the HOD / dev (the group layout checks that).
 export function CommunitySettingsModal({ community }: CommunitySettingsModalProps) {
   const router = useRouter()
+  const viewer = useViewer()
   const [open, setOpen] = useState(false)
   const [activeTab, setActiveTab] = useState("general")
   
@@ -49,6 +53,20 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
 
   // Danger Zone State
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Role management for Owner/Admin
+  const handleUpdateRole = async (userId: string, newRole: "curator" | "member") => {
+    setMutatingMemberId(userId)
+    try {
+      await updateMemberRole(community.id, userId, newRole)
+      setMembers(members.map(m => m.id === userId ? { ...m, role: newRole } : m))
+      toast.success("Member role updated")
+    } catch (error: unknown) {
+      toast.error(error instanceof Error ? error.message : "Failed to update role")
+    } finally {
+      setMutatingMemberId(null)
+    }
+  }
 
   // Fetch members when opening members tab
   useEffect(() => {
@@ -245,11 +263,15 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
                   <div className="space-y-3">
                     {members.map(member => {
                       const isMutating = mutatingMemberId === member.id
+                      const normRole = normalizeCommunityRole(member.role)
+                      const isOwner = normRole === "owner"
+                      const isCurator = normRole === "curator"
+                      const isSelf = member.id === viewer.userId
 
                       return (
                         <div key={member.id} className="flex items-center justify-between p-3 rounded-[1rem] border-[2px] border-foreground bg-card">
-                           <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-[8px] bg-muted border-[1.5px] border-foreground overflow-hidden">
+                           <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-[8px] bg-muted border-[1.5px] border-foreground overflow-hidden shrink-0">
                                 {member.profile_pic ? (
                                     <img src={member.profile_pic} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
                                 ) : (
@@ -258,30 +280,78 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
                                     </div>
                                 )}
                               </div>
-                              <div>
-                                 <div className="font-heading font-bold text-[14px]">
-                                     {member.name}
-                                     {member.role === 'hod' && <span className="ml-2 text-[10px] bg-[#0057FF] text-white px-1.5 py-0.5 rounded-[4px] border-[1px] border-foreground uppercase tracking-wide">HOD</span>}
+                              <div className="min-w-0">
+                                 <div className="font-heading font-bold text-[14px] flex items-center gap-2">
+                                     <span className="truncate">{member.name}</span>
+                                     {normRole === "owner" && (
+                                       <span className="text-[10px] bg-[#FFD600] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                                         <Crown className="w-3 h-3" /> Owner
+                                       </span>
+                                     )}
+                                     {normRole === "curator" && (
+                                       <span className="text-[10px] bg-[#0057FF] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                                         <Shield className="w-3 h-3" /> Curator
+                                       </span>
+                                     )}
+                                     {normRole === "member" && (
+                                       <span className="text-[10px] bg-[#00E5FF] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                                         <User className="w-3 h-3" /> Member
+                                       </span>
+                                     )}
                                  </div>
-                                 <div className="text-[12px] text-muted-foreground">
+                                 <div className="text-[12px] text-muted-foreground truncate">
                                      {member.email}
                                  </div>
                               </div>
                            </div>
 
-                           <button
-                             onClick={() => handleKickMember(member.id, member.name)}
-                             disabled={isMutating}
-                             title="Remove member"
-                             aria-label="Remove member"
-                             className="w-9 h-9 flex items-center justify-center rounded-[0.5rem] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[2px_2px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50"
-                           >
-                              {isMutating ? (
-                                  <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                  <UserMinus className="w-4 h-4" />
-                              )}
-                           </button>
+                           <div className="flex items-center gap-2 shrink-0">
+                             {!isOwner && !isSelf && (
+                               isCurator ? (
+                                 <button
+                                   onClick={() => {
+                                     if (window.confirm(`Demote ${member.name} to regular Member?`)) {
+                                       handleUpdateRole(member.id, "member")
+                                     }
+                                   }}
+                                   disabled={isMutating}
+                                   title="Demote to Member"
+                                   className="px-2.5 py-1 text-[11px] font-heading font-bold rounded-[8px] border-[1.5px] border-foreground bg-muted hover:bg-background text-foreground shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
+                                 >
+                                   Demote to Member
+                                 </button>
+                               ) : (
+                                 <button
+                                   onClick={() => {
+                                     if (window.confirm(`Appoint ${member.name} as Curator? Curators can manage materials and members.`)) {
+                                       handleUpdateRole(member.id, "curator")
+                                     }
+                                   }}
+                                   disabled={isMutating}
+                                   title="Appoint as Curator"
+                                   className="px-2.5 py-1 text-[11px] font-heading font-bold rounded-[8px] border-[1.5px] border-foreground bg-[#0057FF] text-white shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
+                                 >
+                                   Appoint Curator
+                                 </button>
+                               )
+                             )}
+
+                             {!isOwner && !isSelf && (
+                               <button
+                                 onClick={() => handleKickMember(member.id, member.name)}
+                                 disabled={isMutating}
+                                 title="Remove member"
+                                 aria-label="Remove member"
+                                 className="w-9 h-9 flex items-center justify-center rounded-[0.5rem] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[2px_2px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50"
+                               >
+                                  {isMutating ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                  ) : (
+                                      <UserMinus className="w-4 h-4" />
+                                  )}
+                               </button>
+                             )}
+                           </div>
                         </div>
                       )
                     })}

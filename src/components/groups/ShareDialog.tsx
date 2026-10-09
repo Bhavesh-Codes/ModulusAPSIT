@@ -343,7 +343,7 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && !submitting && onClose()}>
-      <DialogContent className={`${dialogCls} max-w-2xl`}>
+      <DialogContent className={`${dialogCls} w-full sm:max-w-2xl max-w-[calc(100vw-2rem)]`}>
         <DialogHeader>
           <DialogTitle className="font-heading font-extrabold text-[22px] text-foreground flex items-center gap-2">
             <div className="w-8 h-8 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] flex items-center justify-center shadow-[2px_2px_0px_black]">
@@ -351,11 +351,6 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
             </div>
             Share to group
           </DialogTitle>
-          {hasNewUploads && (
-            <p className="font-sans text-[13px] text-muted-foreground">
-              New files are saved to your personal vault first, then shared.
-            </p>
-          )}
         </DialogHeader>
 
         <div className="space-y-6 mt-2">

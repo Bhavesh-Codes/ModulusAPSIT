@@ -2,7 +2,7 @@
 
 import { useMemo } from "react"
 import { Search, X } from "lucide-react"
-import { RESOURCE_TYPES, resourceTypeLabel, type CommunityResource, type CommunitySubject, type SubjectModule } from "@/types/groups"
+import { RESOURCE_TYPES, resourceTypeLabel, toRomanSemester, type CommunityResource, type CommunitySubject, type SubjectModule } from "@/types/groups"
 import { selectCls } from "./ui"
 
 export interface Filters {
@@ -132,7 +132,7 @@ export function ResourceFilters({
             <option value="">Any semester</option>
             {semesters.map((n) => (
               <option key={n} value={n}>
-                Semester {n}
+                Sem {toRomanSemester(n)}
               </option>
             ))}
           </select>

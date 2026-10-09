@@ -1,35 +1,95 @@
-export type CommunityRole = "hod" | "faculty"
+export type PlatformRole = "admin" | "user"
+export type CommunityRole = "owner" | "curator" | "member" | "viewer" | "hod" | "faculty"
+
+export interface CommunityPermissions {
+  role: "owner" | "curator" | "member" | "viewer"
+  isPlatformAdmin: boolean
+  isOwner: boolean
+  isCurator: boolean
+  isMember: boolean
+  isViewer: boolean
+  canEditCommunity: boolean
+  canDeleteCommunity: boolean
+  canManageSettings: boolean
+  canManageMembers: boolean
+  canAppointCurator: boolean
+  canUploadContent: boolean
+  canPinContent: boolean
+  canCreateSubject: boolean
+  canDeleteModule: boolean
+  canMergeSubjects: boolean
+}
 
 export type ResourceType =
   | "lecture_notes"
-  | "ppt"
+  | "lecture_ppt"
   | "lab_manual"
   | "question_bank"
   | "previous_papers"
   | "assignment"
-  | "reference"
+  | "solutions"
+  | "case_study"
   | "video"
+  | "reference"
   | "other"
 
 export const RESOURCE_TYPES: { value: ResourceType; label: string; plural: string }[] = [
   { value: "lecture_notes", label: "Lecture notes", plural: "Lecture notes" },
-  { value: "ppt", label: "PPT", plural: "PPTs" },
+  { value: "lecture_ppt", label: "Lecture PPT", plural: "Lecture PPTs" },
   { value: "lab_manual", label: "Lab manual", plural: "Lab manuals" },
   { value: "question_bank", label: "Question bank", plural: "Question banks" },
   { value: "previous_papers", label: "Previous papers", plural: "Previous papers" },
   { value: "assignment", label: "Assignment", plural: "Assignments" },
-  { value: "reference", label: "Reference", plural: "References" },
+  { value: "solutions", label: "Solutions", plural: "Solutions" },
+  { value: "case_study", label: "Case study", plural: "Case studies" },
   { value: "video", label: "Video", plural: "Videos" },
+  { value: "reference", label: "Reference", plural: "References" },
   { value: "other", label: "Other", plural: "Other" },
 ]
 
 export const RESOURCE_TYPE_VALUES = RESOURCE_TYPES.map((t) => t.value)
 
 export function resourceTypeLabel(value: string | null | undefined): string {
+  if (value === "ppt") return "Lecture PPT"
   return RESOURCE_TYPES.find((t) => t.value === value)?.label ?? "Unclassified"
 }
 
 export type ShareStatus = "current" | "outdated" | "archived"
+
+export const SCHEMES = ["C-Scheme", "NEP-2020"] as const
+export type Scheme = (typeof SCHEMES)[number]
+
+export const SUBJECT_TYPES = [
+  { value: "theory", label: "Theory" },
+  { value: "lab", label: "Lab" },
+] as const
+export type SubjectType = (typeof SUBJECT_TYPES)[number]["value"]
+
+export const SEMESTERS = [
+  { value: 3, label: "III", roman: "III" },
+  { value: 4, label: "IV", roman: "IV" },
+  { value: 5, label: "V", roman: "V" },
+  { value: 6, label: "VI", roman: "VI" },
+  { value: 7, label: "VII", roman: "VII" },
+  { value: 8, label: "VIII", roman: "VIII" },
+] as const
+
+const ROMAN_SEMESTERS: Record<number, string> = {
+  1: "I",
+  2: "II",
+  3: "III",
+  4: "IV",
+  5: "V",
+  6: "VI",
+  7: "VII",
+  8: "VIII",
+}
+
+export function toRomanSemester(sem: number | string | null | undefined): string {
+  if (!sem) return ""
+  const n = typeof sem === "string" ? parseInt(sem, 10) : sem
+  return ROMAN_SEMESTERS[n] ?? String(sem)
+}
 
 export interface Subject {
   id: string
@@ -37,7 +97,8 @@ export interface Subject {
   short_name: string | null
   code: string | null
   semester: number | null
-  scheme: string | null
+  scheme: Scheme | string | null
+  subject_type?: SubjectType | null
 }
 
 export interface SubjectModule {

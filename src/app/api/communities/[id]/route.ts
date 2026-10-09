@@ -16,8 +16,10 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     return NextResponse.json({
       ...community,
-      membership: access.role ? { role: access.role } : null,
-      can_manage: viewer.isPrivileged,
+      membership: access.isMember ? { role: access.role } : null,
+      effective_role: access.role,
+      can_manage: access.canManage,
+      can_edit_community: access.permissions.canEditCommunity,
       viewer_id: viewer.userId,
     })
   } catch (e) {

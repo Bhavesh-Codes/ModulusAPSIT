@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Search, Plus, Loader2, Users, Shield, User } from "lucide-react"
+import { Search, Plus, Loader2, Users, Shield, User, Crown } from "lucide-react"
 import { toast } from "sonner"
 import { motion } from "framer-motion"
 import Link from "next/link"
@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createModule } from "@/actions/modules"
 import { useViewer } from "@/hooks/useViewer"
+import { normalizeCommunityRole } from "@/lib/roles"
 import {
   Dialog,
   DialogContent,
@@ -29,7 +30,8 @@ interface Community {
   description: string
   member_count: number
   banner_url?: string
-  membership?: { role: "hod" | "faculty" } | null
+  membership?: { role: string } | null
+  effective_role?: string
 }
 
 // --- Zod Schema ---
@@ -97,8 +99,8 @@ export default function ExplorePage() {
       ) : (
         <div className="space-y-12">
           {(() => {
-            const mine = communities.filter(c => !!c.membership)
-            const others = communities.filter(c => !c.membership)
+            const mine = communities.filter(c => !!c.membership && c.membership.role !== "viewer")
+            const others = communities.filter(c => !c.membership || c.membership.role === "viewer")
 
             return (
               <>
@@ -172,21 +174,40 @@ function CommunityCard({ community, index }: { community: Community, index: numb
             </h3>
           </div>
 
-          {community.membership && (
-            <div className="mb-3">
-              {community.membership.role === 'hod' ? (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[1.5px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[11px] font-bold tracking-wide bg-[#0057FF] text-white">
-                  <Shield className="w-3.5 h-3.5" />
-                  HOD
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[1.5px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[11px] font-bold tracking-wide bg-[#FFD600] text-foreground">
-                  <User className="w-3.5 h-3.5" />
-                  FACULTY
-                </span>
-              )}
-            </div>
-          )}
+          {community.membership && community.membership.role !== "viewer" && (() => {
+            const role = normalizeCommunityRole(community.membership.role)
+            if (role === "owner") {
+              return (
+                <div className="mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[1.5px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[11px] font-bold tracking-wide bg-[#FFD600] text-foreground">
+                    <Crown className="w-3.5 h-3.5" />
+                    OWNER
+                  </span>
+                </div>
+              )
+            }
+            if (role === "curator") {
+              return (
+                <div className="mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[1.5px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[11px] font-bold tracking-wide bg-[#0057FF] text-white">
+                    <Shield className="w-3.5 h-3.5" />
+                    CURATOR
+                  </span>
+                </div>
+              )
+            }
+            if (role === "member") {
+              return (
+                <div className="mb-3">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[1.5px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[11px] font-bold tracking-wide bg-[#00E5FF] text-foreground">
+                    <User className="w-3.5 h-3.5" />
+                    MEMBER
+                  </span>
+                </div>
+              )
+            }
+            return null
+          })()}
 
           <p className="font-sans text-[15px] leading-relaxed text-muted-foreground line-clamp-2 mb-6 flex-1">
             {community.description || "No description provided."}

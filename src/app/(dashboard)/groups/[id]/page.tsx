@@ -1,173 +1,239 @@
 "use client"
 
-import { useParams } from "next/navigation"
-import { useCommunity, useCommunityResources } from "@/components/groups/useCommunityData"
+import { useMemo, useState } from "react"
 import Link from "next/link"
-import type { CommunityResource } from "@/types/groups"
-import { 
-  FolderSync, 
-  ArrowRight, 
-  FileText, 
-  Link2, 
-  Sparkles,
-  Info
-} from "lucide-react"
+import { useParams } from "next/navigation"
+import { BookOpen, FolderSync, HelpCircle, Layers, Loader2, Search, Clock, ArrowRight } from "lucide-react"
+import { useCommunity, useCommunityResources, useCommunitySubjects } from "@/components/groups/useCommunityData"
+import { ResourceCard } from "@/components/groups/ResourceCard"
+import { EditShareDialog } from "@/components/groups/EditShareDialog"
+import { ShareEntryButtons } from "@/components/groups/ShareEntryButtons"
+import {
+  ResourceFilters, applyFilters, emptyFilters, hasResourceFilter, type Filters,
+} from "@/components/groups/ResourceFilters"
+import { useSubjectDetail } from "@/components/groups/ClassificationFields"
+import { toRomanSemester, type CommunityResource } from "@/types/groups"
 
-export default function GroupHomePage() {
+export default function GroupLibraryPage() {
   const params = useParams()
   const id = params.id as string
 
   const { data: community } = useCommunity(id)
-  const { data: resources = [], isLoading: vaultLoading } = useCommunityResources(id)
-  const vaultItems: CommunityResource[] = resources
-  const role = community?.membership?.role as string | undefined
-  const isMember = !!community?.membership
+  const { data: resources = [], isLoading } = useCommunityResources(id)
+  const { data: subjects = [], isLoading: subjectsLoading } = useCommunitySubjects(id)
+
+  const [filters, setFilters] = useState<Filters>(emptyFilters)
+  const [editing, setEditing] = useState<CommunityResource | null>(null)
+
+  const canShare = !!community?.membership && community.membership.role !== "viewer"
+  const canManage = !!community?.can_manage
+  const viewerId = community?.viewer_id ?? null
+
+  const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }))
+
+  // Modules of the chosen subject, for the module filter.
+  const subjectDetail = useSubjectDetail(filters.subjectId || null)
+
+  const filtered = useMemo(() => applyFilters(resources, filters), [resources, filters])
+  const browsing = !hasResourceFilter(filters)
+
+  const gridSubjects = useMemo(
+    () =>
+      subjects
+        .filter((s) => (!filters.semester || String(s.semester ?? "") === filters.semester) && (!filters.scheme || (s.scheme ?? "") === filters.scheme))
+        .sort((a, b) => (a.semester ?? 99) - (b.semester ?? 99) || a.name.localeCompare(b.name)),
+    [subjects, filters.semester, filters.scheme]
+  )
+
+  const unsorted = useMemo(
+    () => resources.filter((r) => !r.subject && (filters.showInactive || r.status === "current")),
+    [resources, filters.showInactive]
+  )
+  
+  const recentResources = useMemo(() => {
+    return [...resources].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5)
+  }, [resources])
+
+  if (isLoading || subjectsLoading) {
+    return (
+      <div className="w-full flex justify-center py-20">
+        <Loader2 className="w-8 h-8 animate-spin text-foreground" />
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8 mt-6">
-      {/* Quick Launch Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Vault Card */}
-        <div className="md:col-span-2 bg-card border-[3px] border-foreground rounded-[1.5rem] p-6 shadow-[6px_6px_0px_black] flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-[-10%] right-[-5%] w-32 h-32 rounded-full border-[2px] border-foreground bg-[#FFD600]/20 pointer-events-none" />
-          
-          <div className="space-y-3 relative z-10">
-            <div className="flex items-center justify-between">
-              <div className="w-12 h-12 rounded-[14px] bg-[#FFD600] border-[2px] border-foreground flex items-center justify-center shadow-[3px_3px_0px_black]">
-                <FolderSync className="w-6 h-6 text-foreground" />
-              </div>
-              <span className="px-3 py-1 rounded-full border-[2px] border-foreground bg-background font-mono text-[12px] font-bold shadow-[2px_2px_0px_black]">
-                {vaultItems.length} {vaultItems.length === 1 ? "Resource" : "Resources"}
-              </span>
+    <div className="space-y-6 relative min-h-[70vh] mt-4">
+      {/* Recently Added Strip */}
+      {recentResources.length > 0 && browsing && (
+        <div className="bg-card border-[3px] border-foreground rounded-[1rem] shadow-[4px_4px_0px_black] p-3 flex flex-col md:flex-row items-start md:items-center gap-4 overflow-x-auto no-scrollbar">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="w-8 h-8 rounded-[8px] bg-[#FFD600] border-[2px] border-foreground flex items-center justify-center">
+              <Clock className="w-4 h-4 text-foreground" />
             </div>
+            <span className="font-heading font-bold text-[14px]">Recently Added</span>
+          </div>
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 md:pb-0 w-full">
+            {recentResources.map((item) => (
+              <Link
+                key={item.id}
+                href={item.subject ? `/groups/${id}/subjects/${item.subject.id}` : `/groups/${id}`}
+                className="shrink-0 flex items-center gap-2 bg-background border-[2px] border-foreground rounded-[8px] px-3 py-1.5 hover:bg-[#FFD600] transition-colors"
+                title={item.title}
+              >
+                <div className="w-2 h-2 rounded-full bg-[#0057FF]" />
+                <span className="font-heading font-bold text-[12px] truncate max-w-[150px]">{item.title}</span>
+                <ArrowRight className="w-3 h-3 ml-1" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
 
-            <div>
-              <h2 className="font-heading font-extrabold text-[24px] text-foreground">
-                Group Vault
-              </h2>
-              <p className="font-sans text-[15px] text-muted-foreground mt-1 max-w-lg">
-                Shared lecture notes, lab manuals, question banks, previous papers and links, organised by subject and module.
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-heading font-extrabold text-[24px] text-foreground flex items-center gap-2">
+            <div className="w-8 h-8 rounded-[8px] border-[2px] border-foreground bg-[#FF3CAC] flex items-center justify-center shadow-[2px_2px_0px_black]">
+              <FolderSync className="w-4 h-4 text-white" />
+            </div>
+            Library
+          </h2>
+          <p className="font-sans text-[15px] text-muted-foreground">Shared material, organised by subject, module and type.</p>
+        </div>
+        {canShare && <ShareEntryButtons communityId={id} />}
+      </div>
+
+      {community && !canShare && (
+        <div className="rounded-[1rem] border-[2px] border-foreground bg-[#FFD600]/20 px-4 py-3 font-sans text-[14px]">
+          You can browse and download everything here. Join the group to share your own files.
+        </div>
+      )}
+
+      <ResourceFilters
+        filters={filters}
+        onChange={patch}
+        resources={resources}
+        subjects={subjects}
+        modules={filters.subjectId ? subjectDetail.data?.modules : undefined}
+      />
+
+      {browsing ? (
+        <>
+          {gridSubjects.length === 0 ? (
+            <div className="bg-background border-[2px] border-foreground rounded-[1.5rem] border-dashed p-12 text-center flex flex-col items-center">
+              <div className="w-16 h-16 rounded-[16px] bg-card border-[2px] border-foreground flex items-center justify-center mb-4 shadow-[4px_4px_0px_black]">
+                <BookOpen className="w-8 h-8 text-foreground opacity-50" />
+              </div>
+              <h3 className="font-heading font-bold text-[20px] mb-2">
+                {subjects.length === 0 ? "No subjects yet" : "No subjects match these filters"}
+              </h3>
+              <p className="font-sans text-[15px] text-muted-foreground max-w-md">
+                {subjects.length === 0
+                  ? canShare
+                    ? "Share the first file and pick or create its subject. It will appear here."
+                    : "Subjects appear here as members share material."
+                  : "Try a different semester or scheme."}
               </p>
             </div>
-          </div>
-
-          <div className="pt-6 relative z-10">
-            <Link
-              href={`/groups/${id}/vault`}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-[1rem] border-[3px] border-foreground bg-[#FFD600] shadow-[4px_4px_0px_black] font-heading font-bold text-[15px] text-foreground hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all"
-            >
-              <span>Explore Vault</span>
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </div>
-
-        {/* Group Info Card */}
-        <div className="bg-card border-[3px] border-foreground rounded-[1.5rem] p-6 shadow-[6px_6px_0px_black] flex flex-col justify-between space-y-4">
-          <div>
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-[8px] bg-background border-[2px] border-foreground flex items-center justify-center">
-                <Info className="w-4 h-4 text-foreground" />
+          ) : (
+            <section aria-label="Subjects">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {gridSubjects.map((s) => (
+                  <Link
+                    key={s.id}
+                    href={`/groups/${id}/subjects/${s.id}`}
+                    className="group flex flex-col gap-3 bg-card border-[2px] border-foreground rounded-[1.5rem] p-5 shadow-[4px_4px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/40"
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="w-12 h-12 rounded-[10px] bg-[#0057FF] border-[2px] border-foreground flex items-center justify-center shadow-[2px_2px_0px_black] shrink-0">
+                        <BookOpen className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex flex-wrap justify-end gap-1.5">
+                        {s.subject_type && (
+                          <span className={`px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground font-mono text-[10px] font-bold ${
+                            s.subject_type === "lab" ? "bg-[#00E5FF] text-foreground" : "bg-background text-foreground"
+                          }`}>
+                            {s.subject_type === "lab" ? "Lab" : "Theory"}
+                          </span>
+                        )}
+                        {s.semester && (
+                          <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[10px] font-bold">
+                            Sem {toRomanSemester(s.semester)}
+                          </span>
+                        )}
+                        {s.scheme && (
+                          <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[10px] font-bold">
+                            {s.scheme}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-heading font-bold text-[18px] leading-snug line-clamp-2">{s.name}</h3>
+                      {s.code && <p className="font-mono text-[12px] text-muted-foreground mt-0.5">{s.code}</p>}
+                    </div>
+                    <div className="mt-auto flex items-center gap-4 font-mono text-[12px] text-muted-foreground pt-3 border-t-[2px] border-dashed border-foreground">
+                      <span className="flex items-center gap-1">
+                        <Layers className="w-3.5 h-3.5" /> {s.resource_count} resource{s.resource_count !== 1 ? "s" : ""}
+                      </span>
+                      <span>{s.module_count} module{s.module_count !== 1 ? "s" : ""}</span>
+                    </div>
+                  </Link>
+                ))}
               </div>
-              <h3 className="font-heading font-bold text-[18px] text-foreground">
-                About Group
-              </h3>
-            </div>
-            
-            <div className="space-y-3 font-sans text-[14px]">
-              <div className="flex items-center justify-between py-1.5 border-b border-border">
-                <span className="text-muted-foreground">Total Members</span>
-                <span className="font-mono font-bold">{community?.member_count ?? 0}</span>
-              </div>
-              <div className="flex items-center justify-between py-1.5">
-                <span className="text-muted-foreground">Your Status</span>
-                <span className="font-mono font-bold">
-                  {role === "hod" ? "HOD" : role === "faculty" ? "Faculty" : "Visitor"}
+            </section>
+          )}
+
+          {unsorted.length > 0 && (
+            <section aria-label="Unsorted" className="space-y-4 pt-4">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-[8px] bg-[#FF6B00] border-[2px] border-foreground flex items-center justify-center shadow-[2px_2px_0px_black]">
+                  <HelpCircle className="w-4 h-4 text-white" />
+                </div>
+                <h3 className="font-heading font-extrabold text-[18px]">Unsorted</h3>
+                <span className="px-2.5 py-0.5 rounded-full bg-background border-[2px] border-foreground text-[12px] font-mono font-bold">
+                  {unsorted.length}
                 </span>
               </div>
+              <p className="font-sans text-[14px] text-muted-foreground">
+                Shared before subjects existed. The person who shared an item, or the HOD, can classify it from the ⋮ menu (Edit).
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                {unsorted.map((r) => (
+                  <ResourceCard key={r.id} resource={r} viewerId={viewerId} canManage={canManage} onEdit={setEditing} />
+                ))}
+              </div>
+            </section>
+          )}
+        </>
+      ) : (
+        <section aria-label="Results" className="space-y-4">
+          <p className="font-mono text-[12px] text-muted-foreground flex items-center gap-1.5">
+            <Search className="w-3.5 h-3.5" /> {filtered.length} result{filtered.length !== 1 ? "s" : ""}
+          </p>
+          {filtered.length === 0 ? (
+            <div className="bg-background border-[2px] border-foreground rounded-[1.5rem] border-dashed p-12 text-center">
+              <h3 className="font-heading font-bold text-[20px] mb-2">No results found</h3>
+              <p className="font-sans text-[15px] text-muted-foreground">Try fewer filters, or tick “Show outdated &amp; archived”.</p>
             </div>
-          </div>
-
-          {!isMember && (
-            <div className="p-3 bg-[#FFD600]/20 border-[2px] border-foreground rounded-[12px] text-[13px] font-medium text-foreground">
-              You can browse everything here. Click <strong>Join Group</strong> above to share your own files.
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {filtered.map((r) => (
+                <ResourceCard key={r.id} resource={r} viewerId={viewerId} canManage={canManage} showSubject onEdit={setEditing} />
+              ))}
             </div>
           )}
-        </div>
-      </div>
+        </section>
+      )}
 
-      {/* Recent Vault Resources Preview */}
-      <div className="bg-card border-[3px] border-foreground rounded-[1.5rem] p-6 shadow-[6px_6px_0px_black] space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-foreground" />
-            <h3 className="font-heading font-extrabold text-[20px] text-foreground">
-              Recent Vault Resources
-            </h3>
-          </div>
-          <Link
-            href={`/groups/${id}/vault`}
-            className="font-heading font-bold text-[13px] text-foreground hover:underline flex items-center gap-1"
-          >
-            View all <ArrowRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
-
-        {vaultLoading ? (
-          <div className="py-8 text-center text-muted-foreground font-sans text-[14px]">
-            Loading recent resources...
-          </div>
-        ) : vaultItems.length === 0 ? (
-          <div className="py-8 text-center text-muted-foreground font-sans text-[14px] bg-background border-[2px] border-dashed border-border rounded-[1rem]">
-            No resources shared in this group yet. Be the first to share from your vault!
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {vaultItems.slice(0, 6).map((item) => {
-              const isLink = item.item_type === "link"
-              const sharedBy = item.uploaded_by_name
-
-              return (
-                <div
-                  key={item.id}
-                  className="bg-background border-[2px] border-foreground rounded-[14px] p-4 shadow-[3px_3px_0px_black] flex flex-col justify-between gap-3 hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-9 h-9 shrink-0 rounded-[10px] bg-card border-[2px] border-foreground flex items-center justify-center">
-                      {isLink ? (
-                        <Link2 className="w-4 h-4 text-[#0057FF]" />
-                      ) : (
-                        <FileText className="w-4 h-4 text-[#FF3CAC]" />
-                      )}
-                    </div>
-                    <div className="overflow-hidden">
-                      <p className="font-heading font-bold text-[14px] text-foreground truncate">
-                        {item.title}
-                      </p>
-                      <p className="font-mono text-[11px] text-muted-foreground truncate">
-                        {item.subject ? item.subject.name : "Unsorted"}
-                        {sharedBy ? ` · Uploaded by ${sharedBy}` : ""}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <span className="font-mono text-[11px] text-muted-foreground">
-                      {isLink ? "Link" : "File"}
-                    </span>
-                    <Link
-                      href={item.subject ? `/groups/${id}/vault/subjects/${item.subject.id}` : `/groups/${id}/vault`}
-                      className="font-heading font-bold text-[12px] text-foreground hover:underline flex items-center gap-1"
-                    >
-                      Open <ArrowRight className="w-3 h-3" />
-                    </Link>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
-      </div>
+      {editing && (
+        <EditShareDialog
+          key={editing.id}
+          resource={editing}
+          onClose={() => setEditing(null)}
+          canMove={canManage || (!editing.subject && editing.shared_by_user_id === viewerId)}
+        />
+      )}
     </div>
   )
 }

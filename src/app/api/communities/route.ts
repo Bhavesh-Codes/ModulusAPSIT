@@ -26,12 +26,27 @@ export async function GET(request: Request) {
     for (const m of memberships ?? []) roleByCommunity.set(m.community_id, m.role)
 
     const result = (communities ?? []).map((c) => {
-      // HOD and dev count as members of every community. Dev is shown as 'hod' so it never leaks.
-      const role = viewer.isPrivileged ? "hod" : roleByCommunity.get(c.id)
+      let role: "owner" | "curator" | "member" | "viewer"
+      if (viewer.isAdmin || c.owner_id === viewer.userId) {
+        role = "owner"
+      } else if (roleByCommunity.has(c.id)) {
+        const raw = roleByCommunity.get(c.id)
+        const lower = (raw ?? "").toLowerCase()
+        if (lower === "owner") role = "owner"
+        else if (lower === "curator" || lower === "hod") role = "curator"
+        else role = "member"
+      } else {
+        role = "viewer"
+      }
+
+      const isActualMember = role === "owner" || role === "curator" || role === "member"
+
       return {
         ...c,
-        membership: role === "hod" || role === "faculty" ? { role } : null,
-        can_manage: viewer.isPrivileged,
+        membership: isActualMember ? { role } : null,
+        effective_role: role,
+        can_manage: role === "owner" || role === "curator",
+        can_edit_community: role === "owner",
       }
     })
 

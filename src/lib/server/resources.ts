@@ -7,7 +7,7 @@ export const RESOURCE_SELECT = `
   id, community_id, vault_item_id, shared_by_user_id, shared_by_name, title, tags, created_at,
   subject_id, module_id, status, is_pinned, supersedes_share_id,
   users ( id, role ),
-  subjects ( id, name, short_name, code, semester, scheme ),
+  subjects ( id, name, short_name, code, semester, scheme, subject_type ),
   subject_modules ( id, number, title ),
   vault_items ( id, item_type, title, url, resource_type, academic_year, description, uploaded_by_name, files ( filename, mime_type, size_bytes ) )
 `
@@ -46,6 +46,7 @@ export function toResource(row: any): CommunityResource {
           code: subject.code ?? null,
           semester: subject.semester ?? null,
           scheme: subject.scheme ?? null,
+          subject_type: subject.subject_type ?? "theory",
         }
       : null,
     module: mod ? { id: mod.id, number: mod.number, title: mod.title } : null,

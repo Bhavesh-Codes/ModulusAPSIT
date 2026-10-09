@@ -8,6 +8,7 @@ export const btnSecondary =
 export const btnPrimary =
   "px-5 py-2.5 rounded-[0.875rem] border-[2px] border-foreground bg-[#FFD600] shadow-[4px_4px_0px_black] font-heading font-bold text-[14px] text-foreground hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-2"
 export const dialogCls =
-  "bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_black] p-6 sm:p-8 max-h-[90vh] overflow-y-auto"
+  "bg-card border-[3px] border-foreground rounded-[2rem] shadow-[8px_8px_0px_black] p-6 sm:p-8 max-h-[90vh] overflow-y-auto overflow-x-hidden"
 export const btnSm =
-  "px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[2px_2px_0px_black] font-heading font-bold text-[13px] text-foreground hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-1.5"
+  "px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[2px_2px_0px_black] font-heading font-bold text-[13px] text-foreground hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all disabled:opacity-50 disabled:pointer-events-none flex items-center justify-center gap-1.5 shrink-0 whitespace-nowrap"
+

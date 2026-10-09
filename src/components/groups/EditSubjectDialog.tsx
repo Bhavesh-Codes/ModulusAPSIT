@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { updateSubject } from "@/actions/groups"
-import type { Subject } from "@/types/groups"
+import { SCHEMES, SEMESTERS, SUBJECT_TYPES, toRomanSemester, type Subject, type SubjectType } from "@/types/groups"
 import { btnPrimary, btnSecondary, dialogCls, inputCls, labelCls, selectCls } from "./ui"
 
 export function EditSubjectDialog({ subject, onClose }: { subject: Subject; onClose: () => void }) {
@@ -18,6 +18,7 @@ export function EditSubjectDialog({ subject, onClose }: { subject: Subject; onCl
   const [code, setCode] = useState(subject.code ?? "")
   const [semester, setSemester] = useState(subject.semester ? String(subject.semester) : "")
   const [scheme, setScheme] = useState(subject.scheme ?? "")
+  const [subjectType, setSubjectType] = useState<SubjectType>((subject.subject_type as SubjectType) ?? "theory")
   const [saving, setSaving] = useState(false)
 
   const save = async () => {
@@ -28,6 +29,7 @@ export function EditSubjectDialog({ subject, onClose }: { subject: Subject; onCl
       code: code || null,
       semester: semester ? Number(semester) : null,
       scheme: scheme || null,
+      subject_type: subjectType,
     })
     setSaving(false)
     if (!res.ok) {
@@ -56,25 +58,45 @@ export function EditSubjectDialog({ subject, onClose }: { subject: Subject; onCl
             <Label className={labelCls}>Short name</Label>
             <Input value={shortName} onChange={(e) => setShortName(e.target.value)} className={inputCls} placeholder="e.g. OS" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
               <Label className={labelCls}>Code</Label>
               <Input value={code} onChange={(e) => setCode(e.target.value)} className={inputCls} />
             </div>
             <div className="space-y-1.5">
+              <Label className={labelCls}>Type</Label>
+              <select value={subjectType} onChange={(e) => setSubjectType(e.target.value as SubjectType)} className={selectCls}>
+                {SUBJECT_TYPES.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1.5">
               <Label className={labelCls}>Semester</Label>
               <select value={semester} onChange={(e) => setSemester(e.target.value)} className={selectCls}>
                 <option value="">—</option>
-                {Array.from({ length: 8 }, (_, i) => (
-                  <option key={i + 1} value={i + 1}>
-                    {i + 1}
+                {SEMESTERS.map((s) => (
+                  <option key={s.value} value={s.value}>
+                    {s.label}
                   </option>
                 ))}
               </select>
             </div>
             <div className="space-y-1.5">
               <Label className={labelCls}>Scheme</Label>
-              <Input value={scheme} onChange={(e) => setScheme(e.target.value)} className={inputCls} />
+              <select value={scheme} onChange={(e) => setScheme(e.target.value)} className={selectCls}>
+                <option value="">—</option>
+                {SCHEMES.map((sch) => (
+                  <option key={sch} value={sch}>
+                    {sch}
+                  </option>
+                ))}
+                {scheme && !SCHEMES.includes(scheme as (typeof SCHEMES)[number]) && (
+                  <option value={scheme}>{scheme}</option>
+                )}
+              </select>
             </div>
           </div>
         </div>

@@ -7,6 +7,8 @@ import { findSimilarSubjects } from "@/lib/server/subjects"
 import {
   ACADEMIC_YEAR_RE,
   RESOURCE_TYPE_VALUES,
+  SCHEMES,
+  type Scheme,
   type ActionResult,
   type ResourceType,
   type ShareConflict,
@@ -14,6 +16,7 @@ import {
   type SimilarSubject,
   type Subject,
   type SubjectModule,
+  type SubjectType,
 } from "@/types/groups"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -209,7 +212,9 @@ export async function shareToCommunities(input: ShareInput): Promise<ActionResul
 
     for (const communityId of communityIds) {
       const access = await getCommunityAccess(admin, viewer, communityId)
-      if (!access.canShare) throw new Error("Only members of a community can share into it.")
+      if (!access.permissions.canUploadContent) {
+        throw new Error("Only members of a group can share resources into it.")
+      }
     }
 
     await assertSubjectAndModule(admin, input.subject_id, input.module_id ?? null)
@@ -233,8 +238,9 @@ export async function shareToCommunities(input: ShareInput): Promise<ActionResul
         .maybeSingle()
       if (!old) throw new Error("The item you want to replace no longer exists.")
       if (communityIds.includes(old.community_id)) {
-        if (old.shared_by_user_id !== viewer.userId && !viewer.isPrivileged) {
-          throw new Error("You can only replace your own items.")
+        const oldAccess = await getCommunityAccess(admin, viewer, old.community_id)
+        if (!oldAccess.permissions.canEditContent(old.shared_by_user_id)) {
+          throw new Error("You do not have permission to replace this item.")
         }
         supersedes = { id: old.id, community_id: old.community_id }
       }
@@ -318,8 +324,10 @@ export async function updateShare(shareId: string, updates: UpdateShareInput): P
   return run(async () => {
     const { viewer, admin } = await ctx()
     const share = await loadShare(admin, shareId)
-    const isSharer = share.shared_by_user_id === viewer.userId
-    if (!isSharer && !viewer.isPrivileged) throw new Error("Only the person who shared this, or the HOD, can edit it.")
+    const access = await getCommunityAccess(admin, viewer, share.community_id)
+    if (!access.permissions.canEditContent(share.shared_by_user_id)) {
+      throw new Error("You do not have permission to edit this resource.")
+    }
 
     const sharePatch: Record<string, unknown> = {}
     const itemPatch: Record<string, unknown> = {}
@@ -339,11 +347,12 @@ export async function updateShare(shareId: string, updates: UpdateShareInput): P
       itemPatch.academic_year = updates.academic_year
     }
 
-    // Moving between subjects/modules: HOD/dev always; the sharer only to classify a legacy "Unsorted" item.
+    // Moving between subjects/modules: Curator/Owner/Admin; or the sharer if legacy unclassified
     const classifying = updates.subject_id !== undefined || updates.module_id !== undefined
     if (classifying) {
-      if (!viewer.isPrivileged && !(isSharer && share.subject_id === null)) {
-        throw new Error("Only the HOD can move items between subjects.")
+      const isSharer = share.shared_by_user_id === viewer.userId
+      if (!access.permissions.canPinContent && !(isSharer && share.subject_id === null)) {
+        throw new Error("Only group Curators, Owners, or Admins can move items between subjects.")
       }
       const subjectId = updates.subject_id ?? share.subject_id
       if (!subjectId) throw new Error("Choose a subject.")
@@ -374,8 +383,9 @@ export async function setShareStatus(shareId: string, status: ShareStatus): Prom
     if (!["current", "outdated", "archived"].includes(status)) throw new Error("Invalid status.")
     const { viewer, admin } = await ctx()
     const share = await loadShare(admin, shareId)
-    if (share.shared_by_user_id !== viewer.userId && !viewer.isPrivileged) {
-      throw new Error("Only the person who shared this, or the HOD, can change its status.")
+    const access = await getCommunityAccess(admin, viewer, share.community_id)
+    if (!access.permissions.canEditContent(share.shared_by_user_id)) {
+      throw new Error("You do not have permission to change the status of this resource.")
     }
     const { error } = await admin.from("community_vault_items").update({ status }).eq("id", shareId)
     if (error) throw new Error(error.message)
@@ -387,8 +397,11 @@ export async function setShareStatus(shareId: string, status: ShareStatus): Prom
 export async function setSharePinned(shareId: string, pinned: boolean): Promise<ActionResult<null>> {
   return run(async () => {
     const { viewer, admin } = await ctx()
-    if (!viewer.isPrivileged) throw new Error("Only the HOD can pin items.")
-    await loadShare(admin, shareId)
+    const share = await loadShare(admin, shareId)
+    const access = await getCommunityAccess(admin, viewer, share.community_id)
+    if (!access.permissions.canPinContent) {
+      throw new Error("Only group Curators, Owners, or Admins can pin items.")
+    }
     const { error } = await admin.from("community_vault_items").update({ is_pinned: pinned }).eq("id", shareId)
     if (error) throw new Error(error.message)
     revalidateGroups()
@@ -400,8 +413,9 @@ export async function removeShare(shareId: string): Promise<ActionResult<null>> 
   return run(async () => {
     const { viewer, admin } = await ctx()
     const share = await loadShare(admin, shareId)
-    if (share.shared_by_user_id !== viewer.userId && !viewer.isPrivileged) {
-      throw new Error("Only the person who shared this, or the HOD, can unshare it.")
+    const access = await getCommunityAccess(admin, viewer, share.community_id)
+    if (!access.permissions.canDeleteContent(share.shared_by_user_id)) {
+      throw new Error("You do not have permission to unshare this resource.")
     }
     const { error } = await admin.from("community_vault_items").delete().eq("id", shareId)
     if (error) throw new Error(error.message)
@@ -416,7 +430,8 @@ export interface CreateSubjectInput {
   name: string
   code?: string | null
   semester?: number | null
-  scheme?: string | null
+  scheme?: Scheme | string | null
+  subject_type?: SubjectType | null
   communityIds: string[]
 }
 
@@ -432,13 +447,22 @@ export async function createSubject(
 ): Promise<ActionResult<{ subject: Subject; modules: SubjectModule[] }>> {
   return run(async () => {
     const { viewer, admin } = await ctx()
-    if (!(await canContribute(admin, viewer))) throw new Error("Join a community first to add subjects.")
+    for (const cId of input.communityIds ?? []) {
+      const access = await getCommunityAccess(admin, viewer, cId)
+      if (!access.permissions.canCreateSubject) {
+        throw new Error("You must be a member of the group to add subjects to it.")
+      }
+    }
 
     const name = input.name?.trim()
     if (!name || name.length < 2) throw new Error("Subject name is required.")
     if (name.length > 150) throw new Error("Subject name is too long.")
     const code = input.code?.trim() || null
     const scheme = input.scheme?.trim() || null
+    const subject_type = input.subject_type === "lab" ? "lab" : "theory"
+    if (scheme && !SCHEMES.includes(scheme as Scheme)) {
+      throw new Error(`Invalid scheme. Allowed schemes are: ${SCHEMES.join(", ")}`)
+    }
     const semester = input.semester ?? null
     if (semester !== null && (!Number.isInteger(semester) || semester < 1 || semester > 8)) {
       throw new Error("Semester must be between 1 and 8.")
@@ -456,8 +480,8 @@ export async function createSubject(
 
     const { data: subject, error } = await admin
       .from("subjects")
-      .insert({ name, code, semester, scheme, created_by: viewer.userId })
-      .select("id, name, short_name, code, semester, scheme")
+      .insert({ name, code, semester, scheme, subject_type, created_by: viewer.userId })
+      .select("id, name, short_name, code, semester, scheme, subject_type")
       .single()
     if (error || !subject) throw new Error(error?.message ?? "Could not create the subject.")
 
@@ -479,14 +503,33 @@ export async function createSubject(
 
 export async function updateSubject(
   subjectId: string,
-  updates: { name?: string; short_name?: string | null; code?: string | null; semester?: number | null; scheme?: string | null }
+  updates: {
+    name?: string
+    short_name?: string | null
+    code?: string | null
+    semester?: number | null
+    scheme?: string | null
+    subject_type?: SubjectType | null
+  }
 ): Promise<ActionResult<null>> {
   return run(async () => {
     const { viewer, admin } = await ctx()
     const { data: subject } = await admin.from("subjects").select("id, created_by").eq("id", subjectId).maybeSingle()
     if (!subject) throw new Error("Subject not found.")
-    if (!viewer.isPrivileged && subject.created_by !== viewer.userId) {
-      throw new Error("Only the HOD or the person who added this subject can edit it.")
+
+    let canEdit = viewer.isAdmin || subject.created_by === viewer.userId
+    if (!canEdit) {
+      const { data: domains } = await admin.from("subject_domains").select("community_id").eq("subject_id", subjectId)
+      for (const d of domains ?? []) {
+        const access = await getCommunityAccess(admin, viewer, d.community_id)
+        if (access.permissions.canEditSubject(subject.created_by)) {
+          canEdit = true
+          break
+        }
+      }
+    }
+    if (!canEdit) {
+      throw new Error("You do not have permission to edit this subject.")
     }
     const patch: Record<string, unknown> = {}
     if (updates.name !== undefined) {
@@ -495,7 +538,16 @@ export async function updateSubject(
     }
     if (updates.short_name !== undefined) patch.short_name = updates.short_name?.trim() || null
     if (updates.code !== undefined) patch.code = updates.code?.trim() || null
-    if (updates.scheme !== undefined) patch.scheme = updates.scheme?.trim() || null
+    if (updates.subject_type !== undefined) {
+      patch.subject_type = updates.subject_type === "lab" ? "lab" : "theory"
+    }
+    if (updates.scheme !== undefined) {
+      const scheme = updates.scheme?.trim() || null
+      if (scheme && !SCHEMES.includes(scheme as Scheme)) {
+        throw new Error(`Invalid scheme. Allowed schemes are: ${SCHEMES.join(", ")}`)
+      }
+      patch.scheme = scheme
+    }
     if (updates.semester !== undefined) {
       if (updates.semester !== null && (!Number.isInteger(updates.semester) || updates.semester < 1 || updates.semester > 8)) {
         throw new Error("Semester must be between 1 and 8.")
@@ -556,7 +608,22 @@ export async function saveSubjectModules(
 export async function deleteSubjectModule(moduleId: string): Promise<ActionResult<null>> {
   return run(async () => {
     const { viewer, admin } = await ctx()
-    if (!viewer.isPrivileged) throw new Error("Only the HOD can delete modules.")
+    const { data: mod } = await admin.from("subject_modules").select("subject_id").eq("id", moduleId).maybeSingle()
+    if (!mod) throw new Error("Module not found.")
+
+    let canDelete = viewer.isAdmin
+    if (!canDelete) {
+      const { data: domains } = await admin.from("subject_domains").select("community_id").eq("subject_id", mod.subject_id)
+      for (const d of domains ?? []) {
+        const access = await getCommunityAccess(admin, viewer, d.community_id)
+        if (access.permissions.canDeleteModule) {
+          canDelete = true
+          break
+        }
+      }
+    }
+    if (!canDelete) throw new Error("Only group Curators, Owners, or Admins can delete modules.")
+
     const { count } = await admin
       .from("community_vault_items")
       .select("id", { count: "exact", head: true })
@@ -573,7 +640,18 @@ export async function deleteSubjectModule(moduleId: string): Promise<ActionResul
 export async function mergeSubjects(sourceId: string, targetId: string): Promise<ActionResult<{ moved: number }>> {
   return run(async () => {
     const { viewer, admin } = await ctx()
-    if (!viewer.isPrivileged) throw new Error("Only the HOD can merge subjects.")
+    let canMerge = viewer.isAdmin
+    if (!canMerge) {
+      const { data: domains } = await admin.from("subject_domains").select("community_id").in("subject_id", [sourceId, targetId])
+      for (const d of domains ?? []) {
+        const access = await getCommunityAccess(admin, viewer, d.community_id)
+        if (access.permissions.canMergeSubjects) {
+          canMerge = true
+          break
+        }
+      }
+    }
+    if (!canMerge) throw new Error("Only group Curators, Owners, or Admins can merge subjects.")
     if (sourceId === targetId) throw new Error("Pick a different subject to merge into.")
 
     const { data: source } = await admin.from("subjects").select("id, merged_into_id").eq("id", sourceId).maybeSingle()

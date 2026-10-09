@@ -16,7 +16,7 @@ import { ShareEntryButtons } from "@/components/groups/ShareEntryButtons"
 import { ResourceFilters, applyFilters, emptyFilters, type Filters } from "@/components/groups/ResourceFilters"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { btnSm, dialogCls } from "@/components/groups/ui"
-import { RESOURCE_TYPES, type CommunityResource } from "@/types/groups"
+import { RESOURCE_TYPES, toRomanSemester, type CommunityResource } from "@/types/groups"
 import { useViewer } from "@/hooks/useViewer"
 
 function sortResources(list: CommunityResource[]) {
@@ -41,7 +41,7 @@ export default function SubjectPage() {
   const [editingModules, setEditingModules] = useState(false)
   const [merging, setMerging] = useState(false)
 
-  const canShare = !!community?.membership
+  const canShare = !!community?.membership && community.membership.role !== "viewer"
   const canManage = !!community?.can_manage
   const viewerId = community?.viewer_id ?? null
   const subject = detail.data?.subject
@@ -49,7 +49,7 @@ export default function SubjectPage() {
 
   // A merged subject forwards to the one it was merged into.
   useEffect(() => {
-    if (subject?.merged_into_id) router.replace(`/groups/${id}/vault/subjects/${subject.merged_into_id}`)
+    if (subject?.merged_into_id) router.replace(`/groups/${id}/subjects/${subject.merged_into_id}`)
   }, [subject?.merged_into_id, id, router])
 
   const patch = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p }))
@@ -79,7 +79,7 @@ export default function SubjectPage() {
     return (
       <div className="py-16 text-center space-y-3">
         <h2 className="font-heading font-extrabold text-[24px]">Subject not found</h2>
-        <Link href={`/groups/${id}/vault`} className={`${btnSm} inline-flex`}>
+        <Link href={`/groups/${id}`} className={`${btnSm} inline-flex`}>
           <ArrowLeft className="w-4 h-4" /> Back to subjects
         </Link>
       </div>
@@ -103,13 +103,20 @@ export default function SubjectPage() {
   return (
     <div className="space-y-6 min-h-[70vh]">
       <div className="space-y-3">
-        <Link href={`/groups/${id}/vault`} className={`${btnSm} inline-flex`}>
+        <Link href={`/groups/${id}`} className={`${btnSm} inline-flex`}>
           <ArrowLeft className="w-4 h-4" /> All subjects
         </Link>
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="min-w-0">
             <h2 className="font-heading font-extrabold text-[28px] leading-tight">{subject.name}</h2>
             <div className="flex flex-wrap items-center gap-2 mt-2">
+              {subject.subject_type && (
+                <span className={`px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground font-mono text-[11px] font-bold ${
+                  subject.subject_type === "lab" ? "bg-[#00E5FF] text-foreground" : "bg-background text-foreground"
+                }`}>
+                  {subject.subject_type === "lab" ? "Lab" : "Theory"}
+                </span>
+              )}
               {subject.code && (
                 <span className="px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[11px] font-bold">
                   {subject.code}
@@ -117,7 +124,7 @@ export default function SubjectPage() {
               )}
               {subject.semester && (
                 <span className="px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[11px] font-bold">
-                  Semester {subject.semester}
+                  Sem {toRomanSemester(subject.semester)}
                 </span>
               )}
               {subject.scheme && (
@@ -223,7 +230,7 @@ export default function SubjectPage() {
             setMerging(false)
             queryClient.invalidateQueries({ queryKey: ["communityVault"] })
             queryClient.invalidateQueries({ queryKey: ["communitySubjects"] })
-            router.replace(`/groups/${id}/vault/subjects/${target.id}`)
+            router.replace(`/groups/${id}/subjects/${target.id}`)
           }}
         />
       )}

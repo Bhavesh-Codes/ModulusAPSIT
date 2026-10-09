@@ -2,11 +2,18 @@ import type { AdminClient } from "@/lib/server/access"
 import type { CommunitySubject, SimilarSubject, Subject, SubjectModule, SubjectSearchResult } from "@/types/groups"
 import { namesLookSimilar } from "@/lib/subjectSimilarity"
 
-const SUBJECT_COLUMNS = "id, name, short_name, code, semester, scheme"
+const SUBJECT_COLUMNS = "id, name, short_name, code, semester, scheme, subject_type"
 
 // PostgREST treats , ( ) and * specially inside or() filters, and % _ are LIKE wildcards.
 function cleanSearch(q: string): string {
   return q.replace(/[,()*%_\\]/g, " ").trim()
+}
+
+export interface SubjectSearchResultWithCommunities extends SubjectSearchResult {
+  /** Names of the communities that this subject belongs to. */
+  community_names: string[]
+  /** True when none of community_ids passed in match this subject. */
+  is_other_domain: boolean
 }
 
 async function domainMap(admin: AdminClient, subjectIds: string[]): Promise<Map<string, string[]>> {
@@ -121,3 +128,80 @@ export async function findSimilarSubjects(
   }
   return out.slice(0, 5)
 }
+
+/**
+ * When searching within specific communities, also finds subjects in OTHER communities
+ * that closely match the query. Used to show the "this subject is in another group" hint.
+ * Returns { inDomain, otherDomain } where otherDomain items carry community_names.
+ */
+export async function searchSubjectsAcrossDomains(
+  admin: AdminClient,
+  q: string,
+  communityIds: string[]
+): Promise<{ inDomain: SubjectSearchResultWithCommunities[]; otherDomain: SubjectSearchResultWithCommunities[] }> {
+  // Only do cross-domain search when we have both a query and a community filter
+  if (!q.trim() || communityIds.length === 0) {
+    const inDomain = await searchSubjects(admin, q, communityIds)
+    return {
+      inDomain: inDomain.map((s) => ({ ...s, community_names: [], is_other_domain: false })),
+      otherDomain: [],
+    }
+  }
+
+  const text = cleanSearch(q)
+
+  // 1. Fetch in-domain subjects (existing logic)
+  const inDomainRaw = await searchSubjects(admin, q, communityIds)
+  const inDomainIds = new Set(inDomainRaw.map((s) => s.id))
+
+  // 2. Fetch cross-domain matches with the same text, unconstrained to community
+  let crossQuery = admin
+    .from("subjects")
+    .select(SUBJECT_COLUMNS)
+    .is("merged_into_id", null)
+
+  if (text) {
+    crossQuery = crossQuery.or(`name.ilike.%${text}%,short_name.ilike.%${text}%,code.ilike.%${text}%`)
+  }
+
+  const { data: crossData } = await crossQuery.order("name", { ascending: true }).limit(10)
+  const crossSubjects = ((crossData ?? []) as Subject[]).filter((s) => !inDomainIds.has(s.id))
+
+  // 3. For the cross-domain subjects, fetch their community memberships + community names
+  let otherDomain: SubjectSearchResultWithCommunities[] = []
+  if (crossSubjects.length > 0) {
+    const crossIds = crossSubjects.map((s) => s.id)
+    const { data: domainLinks } = await admin
+      .from("subject_domains")
+      .select("subject_id, community_id, communities(name)")
+      .in("subject_id", crossIds)
+
+    // Build map: subject_id → { community_ids[], community_names[] }
+    const communityMap = new Map<string, { ids: string[]; names: string[] }>()
+    for (const link of domainLinks ?? []) {
+      const entry = communityMap.get(link.subject_id) ?? { ids: [], names: [] }
+      entry.ids.push(link.community_id)
+      const communityName = Array.isArray(link.communities)
+        ? (link.communities[0] as { name: string } | undefined)?.name
+        : (link.communities as { name: string } | null)?.name
+      if (communityName) entry.names.push(communityName)
+      communityMap.set(link.subject_id, entry)
+    }
+
+    otherDomain = crossSubjects.map((s) => {
+      const entry = communityMap.get(s.id) ?? { ids: [], names: [] }
+      return {
+        ...s,
+        community_ids: entry.ids,
+        community_names: entry.names,
+        is_other_domain: true,
+      }
+    })
+  }
+
+  return {
+    inDomain: inDomainRaw.map((s) => ({ ...s, community_names: [], is_other_domain: false })),
+    otherDomain,
+  }
+}
+
