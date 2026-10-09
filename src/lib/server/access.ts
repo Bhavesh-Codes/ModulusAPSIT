@@ -12,6 +12,7 @@ export type AdminClient = ReturnType<typeof createAdminClient>
 
 export interface Viewer {
   userId: string
+  name: string | null
   systemRole: string
   platformRole: PlatformRole
   isAdmin: boolean
@@ -37,13 +38,17 @@ export async function getViewer(): Promise<Viewer> {
   } = await supabase.auth.getUser()
   if (error || !user) throw new HttpError("Unauthorized", 401)
 
-  const { data: profile } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle()
+  const { data: profile } = await supabase.from("users").select("role, name, title").eq("id", user.id).maybeSingle()
   const systemRole = (profile?.role as string | undefined) ?? "faculty"
   const isAdmin = isPlatformAdmin(systemRole)
   const platformRole: PlatformRole = isAdmin ? "admin" : "user"
+  const displayName = profile?.name
+    ? (profile.title ? `${profile.title} ${profile.name}`.trim() : profile.name)
+    : (user.user_metadata?.full_name as string | undefined) ?? (user.user_metadata?.name as string | undefined) ?? null
 
   return {
     userId: user.id,
+    name: displayName,
     systemRole,
     platformRole,
     isAdmin,

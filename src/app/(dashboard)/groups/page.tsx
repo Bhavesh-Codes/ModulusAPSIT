@@ -209,11 +209,13 @@ function CommunityCard({ community, index }: { community: Community, index: numb
             return null
           })()}
 
-          <p className="font-sans text-[15px] leading-relaxed text-muted-foreground line-clamp-2 mb-6 flex-1">
-            {community.description || "No description provided."}
-          </p>
+          {community.description ? (
+            <p className="font-sans text-[15px] leading-relaxed text-muted-foreground line-clamp-2 mb-6">
+              {community.description}
+            </p>
+          ) : null}
 
-          <div className="flex items-center justify-between pt-5 border-t-[2px] border-dashed border-border">
+          <div className="flex items-center justify-between pt-5 border-t-[2px] border-dashed border-border mt-auto">
             <div className="flex items-center gap-2 font-mono text-[13px] text-foreground">
               <div className="w-8 h-8 rounded-[8px] bg-muted border-[1.5px] border-foreground flex items-center justify-center">
                 <Users className="w-4 h-4 text-foreground" />

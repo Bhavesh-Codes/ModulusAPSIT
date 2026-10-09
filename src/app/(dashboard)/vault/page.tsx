@@ -363,8 +363,9 @@ function UploadModal({
         return currentParent
       }
 
-      // Sequential upload to prevent overwhelming the Next.js body parser with massive folder uploads
-      for (const item of validItems) {
+      for (let i = 0; i < validItems.length; i++) {
+        const item = validItems[i]
+        toast.loading(`Securing file ${i + 1} of ${validItems.length}…`, { id: toastId })
         let targetFolderId = currentFolderId
 
         if (item.relativePath) {

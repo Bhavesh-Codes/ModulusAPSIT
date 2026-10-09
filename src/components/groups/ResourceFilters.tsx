@@ -1,9 +1,9 @@
 "use client"
 
-import { useMemo } from "react"
-import { Search, X } from "lucide-react"
+import { useMemo, useState } from "react"
+import { ChevronDown, Search, SlidersHorizontal, X } from "lucide-react"
 import { RESOURCE_TYPES, resourceTypeLabel, toRomanSemester, type CommunityResource, type CommunitySubject, type SubjectModule } from "@/types/groups"
-import { selectCls } from "./ui"
+import { btnSm, selectCls } from "./ui"
 
 export interface Filters {
   q: string
@@ -102,104 +102,167 @@ export function ResourceFilters({
 
   const active = hasResourceFilter(filters) || filters.semester || filters.scheme || filters.showInactive
 
+  // Collapsed by default — search + common (subject/module/type) stay visible,
+  // semester/scheme/year/uploader + archived toggle tuck under "Filters".
+  const [expanded, setExpanded] = useState(false)
+
+  const activeCount = useMemo(() => {
+    let n = 0
+    if (show.includes("subject") && filters.subjectId) n += 1
+    if (show.includes("semester") && filters.semester) n += 1
+    if (show.includes("scheme") && filters.scheme) n += 1
+    if (show.includes("module") && filters.moduleId) n += 1
+    if (show.includes("type") && filters.type) n += 1
+    if (show.includes("year") && filters.year) n += 1
+    if (show.includes("uploader") && filters.uploader) n += 1
+    if (filters.showInactive) n += 1
+    return n
+  }, [show, filters])
+
+  const subjectAvailable = show.includes("subject") && !!subjects && subjects.length > 0
+  const semesterAvailable = show.includes("semester") && semesters.length > 0
+  const schemeAvailable = show.includes("scheme") && schemes.length > 0
+  const moduleAvailable = show.includes("module") && !!modules && modules.length > 0
+  const typeAvailable = show.includes("type")
+  const yearAvailable = show.includes("year") && years.length > 0
+  const uploaderAvailable = show.includes("uploader") && uploaders.length > 0
+  const hasInline = subjectAvailable || moduleAvailable || typeAvailable
+  const hasAdvanced = semesterAvailable || schemeAvailable || yearAvailable || uploaderAvailable
+
   return (
     <div className="bg-muted p-3 rounded-[1rem] border-[2px] border-foreground space-y-3">
-      <div className="relative">
-        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-        <input
-          value={filters.q}
-          onChange={(e) => onChange({ q: e.target.value })}
-          placeholder="Search title, description, tags or subject code…"
-          aria-label="Search resources"
-          className="w-full pl-9 pr-3 h-10 rounded-[0.75rem] border-[2px] border-foreground bg-card font-sans text-[14px] shadow-[2px_2px_0px_black] outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
-        />
-      </div>
-
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        {show.includes("subject") && subjects && (
-          <select aria-label="Subject" value={filters.subjectId} onChange={(e) => onChange({ subjectId: e.target.value, moduleId: "" })} className={cls}>
-            <option value="">All subjects</option>
-            {subjects.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.code ? `${s.code} · ` : ""}
-                {s.name}
-              </option>
-            ))}
-          </select>
-        )}
-        {show.includes("semester") && semesters.length > 0 && (
-          <select aria-label="Semester" value={filters.semester} onChange={(e) => onChange({ semester: e.target.value })} className={cls}>
-            <option value="">Any semester</option>
-            {semesters.map((n) => (
-              <option key={n} value={n}>
-                Sem {toRomanSemester(n)}
-              </option>
-            ))}
-          </select>
-        )}
-        {show.includes("scheme") && schemes.length > 0 && (
-          <select aria-label="Scheme" value={filters.scheme} onChange={(e) => onChange({ scheme: e.target.value })} className={cls}>
-            <option value="">Any scheme</option>
-            {schemes.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        )}
-        {show.includes("module") && modules && modules.length > 0 && (
-          <select aria-label="Module" value={filters.moduleId} onChange={(e) => onChange({ moduleId: e.target.value })} className={cls}>
-            <option value="">All modules</option>
-            {modules.map((m) => (
-              <option key={m.id} value={m.id}>
-                Module {m.number}: {m.title}
-              </option>
-            ))}
-          </select>
-        )}
-        {show.includes("type") && (
-          <select aria-label="Resource type" value={filters.type} onChange={(e) => onChange({ type: e.target.value })} className={cls}>
-            <option value="">All types</option>
-            {types.map((t) => (
-              <option key={t.value} value={t.value}>
-                {resourceTypeLabel(t.value)}
-              </option>
-            ))}
-          </select>
-        )}
-        {show.includes("year") && years.length > 0 && (
-          <select aria-label="Academic year" value={filters.year} onChange={(e) => onChange({ year: e.target.value })} className={cls}>
-            <option value="">Any year</option>
-            {years.map((y) => (
-              <option key={y} value={y}>
-                {y}
-              </option>
-            ))}
-          </select>
-        )}
-        {show.includes("uploader") && uploaders.length > 0 && (
-          <select aria-label="Uploaded by" value={filters.uploader} onChange={(e) => onChange({ uploader: e.target.value })} className={cls}>
-            <option value="">Anyone</option>
-            {uploaders.map((u) => (
-              <option key={u} value={u}>
-                {u}
-              </option>
-            ))}
-          </select>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <label className="flex items-center gap-2 font-sans text-[13px] font-medium cursor-pointer">
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input
-            type="checkbox"
-            checked={filters.showInactive}
-            onChange={(e) => onChange({ showInactive: e.target.checked })}
-            className="accent-black"
+            value={filters.q}
+            onChange={(e) => onChange({ q: e.target.value })}
+            placeholder="Search title, description, tags or subject code…"
+            aria-label="Search resources"
+            className="w-full pl-9 pr-3 h-10 rounded-[0.75rem] border-[2px] border-foreground bg-card font-sans text-[14px] shadow-[2px_2px_0px_black] outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
           />
-          Show outdated &amp; archived
-        </label>
-        {active && (
+        </div>
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          aria-expanded={expanded}
+          aria-controls="resource-filters-more"
+          className={`${btnSm} h-10 ${expanded || activeCount > 0 ? "bg-[#FFD600]" : ""}`}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+          Filters{activeCount > 0 ? ` · ${activeCount}` : ""}
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${expanded ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+
+      {hasInline && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          {subjectAvailable && (
+            <select aria-label="Subject" value={filters.subjectId} onChange={(e) => onChange({ subjectId: e.target.value, moduleId: "" })} className={cls}>
+              <option value="">All subjects</option>
+              {subjects!.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.code ? `${s.code} · ` : ""}
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          )}
+          {moduleAvailable && (
+            <select aria-label="Module" value={filters.moduleId} onChange={(e) => onChange({ moduleId: e.target.value })} className={cls}>
+              <option value="">All modules</option>
+              {modules!.map((m) => (
+                <option key={m.id} value={m.id}>
+                  Module {m.number}: {m.title}
+                </option>
+              ))}
+            </select>
+          )}
+          {typeAvailable && (
+            <select aria-label="Resource type" value={filters.type} onChange={(e) => onChange({ type: e.target.value })} className={cls}>
+              <option value="">All types</option>
+              {types.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {resourceTypeLabel(t.value)}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      )}
+
+      {expanded && (
+        <div id="resource-filters-more" className="pt-3 border-t-[2px] border-dashed border-foreground/30 space-y-3">
+          {hasAdvanced && (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              {semesterAvailable && (
+                <select aria-label="Semester" value={filters.semester} onChange={(e) => onChange({ semester: e.target.value })} className={cls}>
+                  <option value="">Any semester</option>
+                  {semesters.map((n) => (
+                    <option key={n} value={n}>
+                      Sem {toRomanSemester(n)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {schemeAvailable && (
+                <select aria-label="Scheme" value={filters.scheme} onChange={(e) => onChange({ scheme: e.target.value })} className={cls}>
+                  <option value="">Any scheme</option>
+                  {schemes.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {yearAvailable && (
+                <select aria-label="Academic year" value={filters.year} onChange={(e) => onChange({ year: e.target.value })} className={cls}>
+                  <option value="">Any year</option>
+                  {years.map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {uploaderAvailable && (
+                <select aria-label="Uploaded by" value={filters.uploader} onChange={(e) => onChange({ uploader: e.target.value })} className={cls}>
+                  <option value="">Anyone</option>
+                  {uploaders.map((u) => (
+                    <option key={u} value={u}>
+                      {u}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <label className="flex items-center gap-2 font-sans text-[13px] font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                checked={filters.showInactive}
+                onChange={(e) => onChange({ showInactive: e.target.checked })}
+                className="accent-black"
+              />
+              Show outdated &amp; archived
+            </label>
+            {active && (
+              <button
+                type="button"
+                onClick={() => onChange({ ...emptyFilters })}
+                className="font-heading font-bold text-[13px] text-foreground hover:underline flex items-center gap-1"
+              >
+                <X className="w-3.5 h-3.5" /> Clear filters
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {!expanded && active && (
+        <div className="flex justify-end">
           <button
             type="button"
             onClick={() => onChange({ ...emptyFilters })}
@@ -207,8 +270,8 @@ export function ResourceFilters({
           >
             <X className="w-3.5 h-3.5" /> Clear filters
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -49,9 +49,15 @@ export const RESOURCE_TYPES: { value: ResourceType; label: string; plural: strin
 
 export const RESOURCE_TYPE_VALUES = RESOURCE_TYPES.map((t) => t.value)
 
+export function normalizeResourceType(value: string | null | undefined): ResourceType | null {
+  if (!value) return null
+  if (value === "ppt") return "lecture_ppt"
+  return (RESOURCE_TYPE_VALUES.includes(value as ResourceType) ? value : "other") as ResourceType
+}
+
 export function resourceTypeLabel(value: string | null | undefined): string {
-  if (value === "ppt") return "Lecture PPT"
-  return RESOURCE_TYPES.find((t) => t.value === value)?.label ?? "Unclassified"
+  const norm = normalizeResourceType(value)
+  return RESOURCE_TYPES.find((t) => t.value === norm)?.label ?? "Unclassified"
 }
 
 export type ShareStatus = "current" | "outdated" | "archived"

@@ -252,7 +252,6 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
   const canSubmit =
     missing.length === 0 &&
     oversize.length === 0 &&
-    conflicts.length === 0 &&
     hashesReady &&
     !checking &&
     !submitting &&
@@ -266,11 +265,12 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
     setSubmitting(true)
     const toastId = toast.loading("Sharing…")
     try {
-      // 1. Make sure every item is in the personal vault first.
+      // 1. Make sure every item is in the personal vault first (upload in parallel).
       const current = [...entries]
-      const toShare: { vault_item_id: string; title: string }[] = []
-      for (let i = 0; i < current.length; i++) {
-        const e = current[i]
+      toast.loading(`Uploading material (0/${current.length})…`, { id: toastId })
+      let completedCount = 0
+
+      const uploadTasks = current.map(async (e, i) => {
         let vaultItemId: string
         if (e.source.kind === "vault") {
           vaultItemId = e.source.vaultItemId
@@ -283,15 +283,19 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
           if (!res.ok) throw new Error(json.error || `Upload of ${e.source.name} failed`)
           vaultItemId = json.vaultItem.id
           current[i] = { ...e, source: { kind: "vault", vaultItemId, name: e.source.name } }
-          setEntries([...current])
         } else {
           const link = await createVaultLink({ title: e.source.title, url: e.source.url })
           vaultItemId = link.id
           current[i] = { ...e, source: { kind: "vault", vaultItemId, name: e.source.title } }
-          setEntries([...current])
         }
-        toShare.push({ vault_item_id: vaultItemId, title: e.title.trim() })
-      }
+        completedCount++
+        toast.loading(`Uploading material (${completedCount}/${current.length})…`, { id: toastId })
+        return { vault_item_id: vaultItemId, title: e.title.trim() }
+      })
+
+      const toShare = await Promise.all(uploadTasks)
+      setEntries([...current])
+      toast.loading("Sharing to group…", { id: toastId })
 
       // 2. Share.
       const res = await shareToCommunities({
@@ -304,6 +308,7 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
         description: description.trim() || null,
         tags,
         supersedes_share_id: supersedes || null,
+        allow_duplicates: true,
       })
       if (!res.ok) throw new Error(res.error)
 
@@ -480,9 +485,9 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
           )}
 
           {conflicts.length > 0 && (
-            <div className="rounded-[0.75rem] border-[2px] border-[#FF3B30] bg-[#FF3B30]/10 p-3 space-y-1.5" role="alert">
+            <div className="rounded-[0.75rem] border-[2px] border-[#FF9500] bg-[#FF9500]/15 p-3 space-y-1.5 shadow-[2px_2px_0px_black]" role="alert">
               <div className="flex items-center gap-2 font-heading font-bold text-[13px] text-foreground">
-                <AlertTriangle className="w-4 h-4 text-[#FF3B30]" /> Already shared, so it can’t be shared again
+                <AlertTriangle className="w-4 h-4 text-[#FF9500]" /> Notice: Already shared in this community
               </div>
               {conflicts.map((c, i) => (
                 <p key={i} className="font-sans text-[13px] text-foreground">
@@ -492,7 +497,7 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
                 </p>
               ))}
               <p className="font-sans text-[12px] text-muted-foreground">
-                Remove that item or untick that community to continue.
+                Remove that item or untick that community to cancel, or continue sharing if you still want to upload it.
               </p>
             </div>
           )}
@@ -509,7 +514,7 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
             </button>
             <button type="button" onClick={submit} disabled={!canSubmit} className={btnPrimary}>
               {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Share2 className="w-4 h-4" />}
-              {submitting ? "Sharing…" : "Share"}
+              {submitting ? "Sharing…" : conflicts.length > 0 ? "Share anyway" : "Share"}
             </button>
           </div>
         </DialogFooter>

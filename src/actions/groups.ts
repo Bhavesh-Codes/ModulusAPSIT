@@ -192,6 +192,7 @@ export interface ShareInput {
   description?: string | null
   tags?: string[]
   supersedes_share_id?: string | null
+  allow_duplicates?: boolean
 }
 
 export async function shareToCommunities(input: ShareInput): Promise<ActionResult<{ created: number }>> {
@@ -246,25 +247,36 @@ export async function shareToCommunities(input: ShareInput): Promise<ActionResul
       }
     }
 
+    // Check conflicts
     const conflicts = await findConflicts(
       admin,
       communityIds,
       items.map((i) => ({ vault_item_id: i.vault_item_id }))
     )
     if (conflicts.length > 0) {
-      const c = conflicts[0]
-      throw new Error(
-        c.kind === "same_item"
-          ? `This item is already shared in that community (${c.location}).`
-          : `The same file is already shared in that community (${c.location}).`
-      )
+      // If same_item (exact same vault item ID in same community), Postgres unique constraint prevents re-insert
+      const sameItem = conflicts.find((c) => c.kind === "same_item")
+      if (sameItem) {
+        throw new Error(`This item is already shared in that community (${sameItem.location}).`)
+      }
+
+      // If same_hash (same file content) but duplicates are not allowed
+      if (!input.allow_duplicates) {
+        const c = conflicts[0]
+        throw new Error(`The same file is already shared in that community (${c.location}).`)
+      }
     }
 
     // Item-level metadata lives on the vault item.
     const description = input.description?.trim() || null
     const { error: metaError } = await admin
       .from("vault_items")
-      .update({ resource_type: input.resource_type, academic_year: input.academic_year, description })
+      .update({
+        resource_type: input.resource_type,
+        academic_year: input.academic_year,
+        description,
+        ...(viewer.name ? { uploaded_by_name: viewer.name } : {}),
+      })
       .in("id", items.map((i) => i.vault_item_id))
     if (metaError) throw new Error(metaError.message)
 
@@ -276,6 +288,7 @@ export async function shareToCommunities(input: ShareInput): Promise<ActionResul
         community_id,
         vault_item_id: it.vault_item_id,
         shared_by_user_id: viewer.userId,
+        shared_by_name: viewer.name,
         title: it.title.trim(),
         tags,
         subject_id: input.subject_id,
