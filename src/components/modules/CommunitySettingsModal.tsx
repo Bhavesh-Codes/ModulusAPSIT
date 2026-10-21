@@ -28,6 +28,7 @@ import {
 } from "@/actions/modules"
 import { normalizeCommunityRole } from "@/lib/roles"
 import { useViewer } from "@/hooks/useViewer"
+import UserAvatar from "@/components/UserAvatar"
 
 interface CommunitySettingsModalProps {
   community: any
@@ -270,16 +271,13 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
 
                       return (
                         <div key={member.id} className="flex items-center justify-between p-3 rounded-[1rem] border-[2px] border-foreground bg-card">
-                           <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-10 h-10 rounded-[8px] bg-muted border-[1.5px] border-foreground overflow-hidden shrink-0">
-                                {member.profile_pic ? (
-                                    <img src={member.profile_pic} className="w-full h-full object-cover" alt="" referrerPolicy="no-referrer" />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center font-bold text-[16px]">
-                                        {member.name?.[0]?.toUpperCase() || '?'}
-                                    </div>
-                                )}
-                              </div>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <UserAvatar
+                                src={member.profile_pic}
+                                name={member.name}
+                                className="w-10 h-10 rounded-[8px] bg-muted border-[1.5px] border-foreground shrink-0"
+                                letterClassName="font-bold text-[16px]"
+                              />
                               <div className="min-w-0">
                                  <div className="font-heading font-bold text-[14px] flex items-center gap-2">
                                      <span className="truncate">{member.name}</span>

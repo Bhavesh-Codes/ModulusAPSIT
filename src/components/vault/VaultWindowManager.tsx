@@ -10,12 +10,12 @@ import {
   Loader2,
   Maximize2,
   Minimize2,
-  Minus,
   PlayCircle,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useVaultWindowStore, type VaultWindow } from "@/lib/stores/useVaultWindowStore"
+import { PptLogo } from "@/components/groups/resourceIcons"
 
 type Bounds = {
   width: number
@@ -46,6 +46,8 @@ function useElementBounds(ref: React.RefObject<HTMLDivElement | null>) {
 function getWindowIcon(win: VaultWindow, className = "w-5 h-5") {
   if (win.type === "image") return <ImageIcon className={`${className} text-foreground`} />
   if (win.type === "youtube") return <PlayCircle className={`${className} text-[#FF3B30]`} />
+  if (win.type === "presentation") return <PptLogo className={className} />
+  if (win.type === "office") return <FileText className={`${className} text-[#0057FF]`} />
   if (win.type === "drive_file" || win.type === "drive_folder") {
     return (
       <svg viewBox="0 0 87.3 78" className={className} aria-label="Google Drive">
@@ -73,13 +75,16 @@ function VaultWindowRenderer({
 }) {
   const closeWindow = useVaultWindowStore((state) => state.closeWindow)
   const focusWindow = useVaultWindowStore((state) => state.focusWindow)
-  const minimizeWindow = useVaultWindowStore((state) => state.minimizeWindow)
 
   const isImage = win.type === "image"
   const isPdf = win.type === "pdf"
   const isYoutube = win.type === "youtube"
   const isDriveFile = win.type === "drive_file"
   const isDriveFolder = win.type === "drive_folder"
+  const isPresentation = win.type === "presentation"
+  const isOffice = win.type === "office" || isPresentation
+
+  const [viewerEngine, setViewerEngine] = useState<"office" | "google">("office")
 
   const dragControls = useDragControls()
   const x = useMotionValue(72 + index * 28)
@@ -334,7 +339,7 @@ function VaultWindowRenderer({
         className="flex items-center justify-between px-5 py-3 border-b-[2px] border-[#222] shrink-0 select-none cursor-move"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="viewer-file-icon w-7 h-7 bg-[#FFD600] rounded-[7px] border-[2px] border-black flex items-center justify-center shrink-0">
+          <div className={`viewer-file-icon w-7 h-7 ${isPresentation ? "bg-[#D24726]" : "bg-[#FFD600]"} rounded-[7px] border-[2px] border-black flex items-center justify-center shrink-0`}>
             {getWindowIcon(win, "w-3.5 h-3.5")}
           </div>
           <span className="font-heading font-bold text-[14px] text-white truncate">{win.title}</span>
@@ -354,16 +359,34 @@ function VaultWindowRenderer({
             </div>
           )}
 
-          <button onClick={() => minimizeWindow(win.id)} className="w-8 h-8 rounded-[0.75rem] border-[2px] border-[#333] bg-[#1A1A1A] hover:bg-[#333] flex items-center justify-center transition-all" title="Minimize">
-            <Minus className="w-3.5 h-3.5 text-white" />
-          </button>
+          {isOffice && (
+            <div className="flex items-center bg-[#1A1A1A] border-[2px] border-[#333] rounded-[0.75rem] p-0.5 text-[11px] font-heading font-bold">
+              <button
+                type="button"
+                onClick={() => setViewerEngine("office")}
+                className={`px-2 py-0.5 rounded-[5px] transition-colors ${viewerEngine === "office" ? "bg-[#D24726] text-white" : "text-[#888] hover:text-white"}`}
+                title="View via Microsoft Office Online"
+              >
+                Office
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewerEngine("google")}
+                className={`px-2 py-0.5 rounded-[5px] transition-colors ${viewerEngine === "google" ? "bg-[#0057FF] text-white" : "text-[#888] hover:text-white"}`}
+                title="View via Google Docs Viewer"
+              >
+                Google
+              </button>
+            </div>
+          )}
+
           <button onClick={() => setIsFullscreen((f) => !f)} className="w-8 h-8 rounded-[0.75rem] border-[2px] border-[#333] bg-[#1A1A1A] hover:bg-[#333] flex items-center justify-center transition-all" title={isFullscreen ? "Restore" : "Fullscreen"}>
             {isFullscreen ? <Minimize2 className="w-3.5 h-3.5 text-white" /> : <Maximize2 className="w-3.5 h-3.5 text-white" />}
           </button>
           <button onClick={() => window.open(win.url, "_blank", "noopener,noreferrer")} className="w-8 h-8 rounded-[0.75rem] border-[2px] border-[#333] bg-[#1A1A1A] hover:bg-[#333] flex items-center justify-center transition-all" title="Open in new tab">
             <ExternalLink className="w-3.5 h-3.5 text-white" />
           </button>
-          {(isImage || isPdf) && (
+          {(isImage || isPdf || isOffice) && (
             <button
               onClick={handleDownload}
               disabled={isDownloading}
@@ -393,6 +416,18 @@ function VaultWindowRenderer({
           </div>
         )}
         {isPdf && <embed src={win.url} type="application/pdf" className="w-full h-full" />}
+        {isOffice && (
+          <iframe
+            src={
+              viewerEngine === "office"
+                ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(win.url)}`
+                : `https://docs.google.com/viewer?url=${encodeURIComponent(win.url)}&embedded=true`
+            }
+            title={win.title}
+            className="w-full h-full border-none bg-white"
+            allowFullScreen
+          />
+        )}
         {isYoutube && <iframe src={win.url} title={win.title} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="w-full h-full border-none" />}
         {isDriveFile && <iframe src={win.url} title={win.title} allow="autoplay" className="w-full h-full border-none" />}
         {isDriveFolder && <iframe src={win.url} title={win.title} className="w-full h-full border-none bg-white" />}
@@ -420,9 +455,6 @@ export function VaultWindowManager() {
   const workspaceRef = useRef<HTMLDivElement>(null)
   const bounds = useElementBounds(workspaceRef)
   const windows = useVaultWindowStore((state) => state.windows)
-  const closeWindow = useVaultWindowStore((state) => state.closeWindow)
-  const focusWindow = useVaultWindowStore((state) => state.focusWindow)
-  const restoreWindow = useVaultWindowStore((state) => state.restoreWindow)
 
   return (
     <div
@@ -433,46 +465,6 @@ export function VaultWindowManager() {
       }}
       className="pointer-events-none fixed left-0 right-0 bottom-0 z-[180] overflow-hidden"
     >
-      <AnimatePresence>
-        {windows.length > 0 && (
-          <motion.div
-            initial={{ x: -100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -100, opacity: 0 }}
-            className="pointer-events-auto absolute left-6 top-1/2 -translate-y-1/2 z-[200] flex flex-col gap-3 bg-card border-[3px] border-foreground rounded-[1.5rem] shadow-[6px_6px_0px_black] p-3 max-h-[80vh] overflow-y-auto overflow-x-hidden group/dock transition-all duration-300"
-          >
-            {windows.map((win) => (
-              <button
-                key={`dock-${win.id}`}
-                onClick={() => {
-                  if (win.isMinimized) restoreWindow(win.id)
-                  else focusWindow(win.id)
-                }}
-                title={win.title}
-                className={`h-12 shrink-0 rounded-[12px] border-[2px] border-foreground flex items-center shadow-[3px_3px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all duration-300 relative group/btn w-12 group-hover/dock:w-[180px] ${win.isMinimized ? "bg-muted opacity-60" : "bg-background hover:bg-muted"}`}
-              >
-                <div className="w-11 h-11 flex items-center justify-center shrink-0">
-                  {getWindowIcon(win)}
-                </div>
-
-                <div className="flex-1 text-left w-0 opacity-0 group-hover/dock:w-auto group-hover/dock:opacity-100 group-hover/dock:pr-3 transition-all duration-300 overflow-hidden whitespace-nowrap">
-                  <span className="font-heading font-bold text-[13px] text-foreground block truncate">
-                    {win.title}
-                  </span>
-                </div>
-
-                <div
-                  onClick={(e) => { e.stopPropagation(); closeWindow(win.id) }}
-                  className="absolute -top-2 -right-2 w-5 h-5 bg-[#FF3B30] border-[1.5px] border-foreground rounded-full opacity-0 group-hover/btn:opacity-100 flex items-center justify-center transition-opacity z-10"
-                >
-                  <X className="w-3 h-3 text-white" strokeWidth={3} />
-                </div>
-              </button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       <AnimatePresence>
         {windows.map((win, index) => (
           <VaultWindowRenderer key={win.id} win={win} index={index} bounds={bounds} />

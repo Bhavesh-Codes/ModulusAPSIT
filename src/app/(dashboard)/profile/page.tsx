@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({})
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarFailed, setAvatarFailed] = useState(false)
   const supabase = createClient()
   const queryClient = useQueryClient()
   const { resolvedTheme, setTheme } = useTheme()
@@ -40,6 +41,11 @@ export default function ProfilePage() {
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  // Clear the error flag whenever a (new) photo URL arrives.
+  useEffect(() => {
+    setAvatarFailed(false)
+  }, [profile?.profile_pic])
 
   const isDark = mounted && resolvedTheme === "dark"
 
@@ -253,8 +259,8 @@ export default function ProfilePage() {
               <div className="flex justify-between items-start mb-5">
                 <div className="relative group">
                   <div className="w-24 h-24 lg:w-28 lg:h-28 rounded-full border-[3.5px] border-foreground bg-[#FFD600] shadow-[4px_4px_0px_black] overflow-hidden flex items-center justify-center text-[34px] lg:text-[40px] font-mono font-bold relative">
-                    {profile.profile_pic ? (
-                      <img src={profile.profile_pic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    {profile.profile_pic && !avatarFailed ? (
+                      <img src={profile.profile_pic} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={() => setAvatarFailed(true)} />
                     ) : (
                       initials
                     )}

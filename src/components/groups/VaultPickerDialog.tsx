@@ -145,7 +145,7 @@ export function VaultPickerDialog({
                       {on && <Check className="w-3 h-3 text-white" strokeWidth={4} />}
                     </span>
                     <div className="w-10 h-10 rounded-[8px] bg-card border-[1.5px] border-foreground flex items-center justify-center shrink-0">
-                      {item.item_type === "link" ? <Link2 className="w-5 h-5 text-[#0057FF]" /> : getFileIcon(item.files?.mime_type, "w-5 h-5")}
+                      {item.item_type === "link" ? <Link2 className="w-5 h-5 text-[#0057FF]" /> : getFileIcon(item.files?.mime_type, "w-5 h-5", nameOf(item))}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="font-heading font-bold text-[14px] truncate">{nameOf(item)}</div>

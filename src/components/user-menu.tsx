@@ -7,6 +7,7 @@ import { logout } from "@/actions/auth"
 import { LogOut, User, Sun, Moon } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useTheme } from "next-themes"
+import UserAvatar from "@/components/UserAvatar"
 
 interface UserProfile {
   name: string | null
@@ -80,31 +81,22 @@ export default function UserMenu() {
     router.push("/profile")
   }
 
-  // Derive initials
-  const initials = profile?.name
-    ? profile.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "ME"
-
   return (
     <div className="relative" ref={menuRef}>
       {/* Avatar Button */}
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground bg-[#FFD600] shadow-[2px_2px_0px_black] font-mono font-bold text-[12px] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all overflow-hidden p-0"
+        className="flex items-center justify-center w-10 h-10 sm:w-8 sm:h-8 rounded-full border-[2px] border-foreground bg-[#FFD600] shadow-[2px_2px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all overflow-hidden p-0"
         suppressHydrationWarning
         aria-label="User menu"
         aria-expanded={open}
       >
-        {profile?.profile_pic ? (
-          <img src={profile.profile_pic} alt="Avatar" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-        ) : (
-          <span className="leading-none">{initials}</span>
-        )}
+        <UserAvatar
+          src={profile?.profile_pic}
+          name={profile?.name}
+          className="w-full h-full rounded-full bg-[#FFD600] text-foreground"
+          letterClassName="font-mono font-bold text-[14px] sm:text-[12px] leading-none"
+        />
       </button>
 
       <AnimatePresence>

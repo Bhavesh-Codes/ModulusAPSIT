@@ -1,7 +1,7 @@
 import { create } from "zustand"
 import { toast } from "sonner"
 
-export type VaultWindowType = "pdf" | "image" | "youtube" | "drive_file" | "drive_folder"
+export type VaultWindowType = "pdf" | "image" | "youtube" | "drive_file" | "drive_folder" | "presentation" | "office"
 
 export interface VaultWindow {
   id: string

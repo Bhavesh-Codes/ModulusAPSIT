@@ -199,32 +199,39 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
         }`}
       >
         <div className="flex items-center gap-8">
-          <Link href="/vault" className="font-heading font-extrabold text-[22px] sm:text-[24px] text-foreground tracking-tight hover:opacity-80 transition-opacity">
+          <Link href="/vault" className="font-heading font-extrabold text-[18px] sm:text-[24px] text-foreground tracking-tight hover:opacity-80 transition-opacity">
             MODULUS
           </Link>
         </div>
 
-        <nav className="flex items-center gap-4 sm:gap-6">
+        <nav className="flex items-center gap-2 sm:gap-3">
+          {/* Chunky tap-friendly chips so Groups/Vault are clear and easy to hit on touch screens */}
           <Link
             href="/groups"
             title="Groups"
             aria-label="Groups"
-            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${pathname.startsWith('/groups') || pathname.startsWith('/group') || pathname.startsWith('/modules') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
-              }`}
+            className={`flex items-center justify-center gap-1.5 h-[40px] sm:h-[38px] px-2 sm:px-3 rounded-[10px] border-[2px] border-foreground font-sans font-bold text-[12px] sm:text-[13.5px] leading-none whitespace-nowrap shadow-[2px_2px_0px_black] transition-all hover:-translate-y-[1px] hover:shadow-[3px_3px_0px_black] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
+              pathname.startsWith('/groups') || pathname.startsWith('/group') || pathname.startsWith('/modules')
+                ? 'bg-[#FFD600] text-foreground'
+                : 'bg-card text-foreground hover:bg-[#FFD600]/20'
+            }`}
           >
-            <Users className="w-5 h-5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Groups</span>
+            <Users className="w-[18px] h-[18px] shrink-0" strokeWidth={2.25} />
+            <span>Groups</span>
           </Link>
 
           <Link
             href="/vault"
             title="Vault"
             aria-label="Vault"
-            className={`flex items-center gap-1.5 font-sans font-bold text-[14px] transition-colors ${pathname.startsWith('/vault') ? 'text-[#0A0A0A]' : 'text-[#555550] hover:text-[#0A0A0A]'
-              }`}
+            className={`flex items-center justify-center gap-1.5 h-[40px] sm:h-[38px] px-2 sm:px-3 rounded-[10px] border-[2px] border-foreground font-sans font-bold text-[12px] sm:text-[13.5px] leading-none whitespace-nowrap shadow-[2px_2px_0px_black] transition-all hover:-translate-y-[1px] hover:shadow-[3px_3px_0px_black] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none ${
+              pathname.startsWith('/vault')
+                ? 'bg-[#FFD600] text-foreground'
+                : 'bg-card text-foreground hover:bg-[#FFD600]/20'
+            }`}
           >
-            <FolderArchive className="w-5 h-5 sm:w-4 sm:h-4" />
-            <span className="hidden sm:inline">Vault</span>
+            <FolderArchive className="w-[18px] h-[18px] shrink-0" strokeWidth={2.25} />
+            <span>Vault</span>
           </Link>
           <UserMenu />
         </nav>

@@ -54,6 +54,10 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       signedUrl = await getSignedUrlForR2(file.r2_object_key)
     }
 
+    if (searchParams.get("redirect") === "true") {
+      return NextResponse.redirect(signedUrl, 307)
+    }
+
     return NextResponse.json({ url: signedUrl })
   } catch (error: any) {
     console.error("Community Download GET error:", error)

@@ -17,7 +17,15 @@ import {
   formatBytes, getGoogleDriveInfo, getUrlDomain, getYouTubePlaylistId, getYouTubeVideoId,
 } from "@/lib/linkUtils"
 import { currentAcademicYear, resourceTypeLabel, type CommunityResource, type ShareStatus } from "@/types/groups"
-import { getFileIcon, getLinkIcon } from "./resourceIcons"
+import {
+  getFileIcon,
+  getLinkIcon,
+  isPptFile,
+  isWordFile,
+  isExcelFile,
+  isPdfFile,
+} from "./resourceIcons"
+import { VaultItemThumbnail } from "@/components/vault/VaultItemThumbnail"
 
 const itemCls =
   "flex items-center gap-2 cursor-pointer font-sans text-[13px] font-medium focus:bg-muted px-2 py-1.5 rounded-[0.5rem] outline-none"
@@ -90,11 +98,25 @@ export function ResourceCard({
     try {
       const signed = await accessUrl("view")
       const mime = resource.file?.mime_type ?? ""
-      if (mime.startsWith("image/") || mime === "application/pdf") {
+      const filename = resource.file?.filename || resource.title
+      const isImg = mime.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(filename)
+      const isPdf = isPdfFile(mime, filename)
+      const isPpt = isPptFile(mime, filename)
+      const isWord = isWordFile(mime, filename)
+      const isExcel = isExcelFile(mime, filename)
+      const canPreview = isImg || isPdf || isPpt || isWord || isExcel
+
+      if (canPreview) {
+        let type: "pdf" | "image" | "presentation" | "office" = "pdf"
+        if (isImg) type = "image"
+        else if (isPdf) type = "pdf"
+        else if (isPpt) type = "presentation"
+        else if (isWord || isExcel) type = "office"
+
         openWindow({
-          type: mime.startsWith("image/") ? "image" : "pdf",
+          type,
           url: signed,
-          title: resource.file?.filename || resource.title,
+          title: filename,
           downloadEndpoint: `/api/communities/${resource.community_id}/vault/${resource.id}/download?action=download`,
         })
       } else {
@@ -138,30 +160,38 @@ export function ResourceCard({
 
   const status = (s: ShareStatus, msg: string) => act(() => setShareStatus(resource.id, s), msg)
 
+  const thumbnailUrl = !isLink
+    ? `/api/communities/${resource.community_id}/vault/${resource.id}/download?redirect=true`
+    : null
+
   return (
     <article
-      className={`group relative border-[2px] border-foreground rounded-[1.5rem] p-5 bg-card shadow-[4px_4px_0px_black] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none flex flex-col gap-3 ${
+      className={`group relative border-[2px] border-foreground rounded-[1.5rem] bg-card overflow-hidden shadow-[4px_4px_0px_black] transition-all hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none flex flex-col ${
         inactive ? "opacity-60" : ""
       }`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <button
-          type="button"
-          onClick={open}
-          aria-label={`Open ${resource.title}`}
-          className={`w-14 h-14 shrink-0 rounded-[12px] border-[2px] border-foreground bg-background flex items-center justify-center shadow-[3px_3px_0px_black]`}
-        >
-          {isLink ? getLinkIcon(url) : getFileIcon(resource.file?.mime_type)}
-        </button>
+      {/* Top Visual Preview Banner */}
+      <div className="relative w-full">
+        <VaultItemThumbnail
+          itemType={resource.item_type}
+          mimeType={resource.file?.mime_type}
+          filename={resource.file?.filename || resource.title}
+          url={resource.url}
+          title={resource.title}
+          thumbnailUrl={thumbnailUrl}
+          sizeBytes={resource.file?.size_bytes}
+          onOpen={open}
+        />
 
-        <div className="flex items-center gap-1.5">
+        {/* Quick Actions (View Eye + Dropdown) */}
+        <div className="absolute top-3 right-3 z-30 flex items-center gap-1.5 opacity-90 sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 transition-opacity">
           <button
             type="button"
             onClick={open}
             disabled={busy}
             title={isLink ? "Open link" : "View file"}
             aria-label={isLink ? "Open link" : "View file"}
-            className="w-8 h-8 rounded-[8px] border-[1.5px] border-foreground bg-card hover:bg-[#0057FF] hover:text-white flex items-center justify-center shadow-[2px_2px_0px_black] transition-colors disabled:opacity-50"
+            className="w-8 h-8 rounded-[8px] border-[1.5px] border-foreground bg-card/95 backdrop-blur-sm hover:bg-[#0057FF] hover:text-white flex items-center justify-center shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
           >
             {busy ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -176,7 +206,7 @@ export function ResourceCard({
               <button
                 type="button"
                 aria-label="More actions"
-                className="w-8 h-8 rounded-[8px] border-[1.5px] border-foreground bg-card hover:bg-background flex items-center justify-center shadow-[2px_2px_0px_black] outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
+                className="w-8 h-8 rounded-[8px] border-[1.5px] border-foreground bg-card/95 backdrop-blur-sm hover:bg-background flex items-center justify-center shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none outline-none focus-visible:ring-2 focus-visible:ring-foreground/40"
               >
                 <MoreVertical className="w-4 h-4" />
               </button>
@@ -242,6 +272,8 @@ export function ResourceCard({
           </DropdownMenu>
         </div>
       </div>
+
+      <div className="p-3.5 flex-1 flex flex-col justify-between gap-2.5">
 
       <div className="min-w-0 space-y-1.5">
         <h3 className="font-heading font-bold text-[16px] text-foreground leading-snug line-clamp-2" title={resource.title}>
@@ -317,6 +349,7 @@ export function ResourceCard({
         <span className="font-mono text-[11px] shrink-0">
           {isLink ? getUrlDomain(url) : formatBytes(resource.file?.size_bytes)} · {new Date(resource.created_at).toLocaleDateString()}
         </span>
+      </div>
       </div>
     </article>
   )

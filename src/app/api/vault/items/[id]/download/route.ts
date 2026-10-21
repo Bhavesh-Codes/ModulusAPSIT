@@ -43,6 +43,10 @@ export async function GET(
       signedUrl = await getSignedUrlForR2(vaultItem.files.r2_object_key);
     }
 
+    if (searchParams.get("redirect") === "true") {
+      return NextResponse.redirect(signedUrl, 307);
+    }
+
     return NextResponse.json({ url: signedUrl });
   } catch (error: any) {
     console.error("Download GET error:", error);

@@ -7,7 +7,7 @@ import {
   Loader2, UserMinus, UserPlus, Users, ArrowLeft,
   Shield, User, Crown,
   GraduationCap, FolderOpen,
-  ChevronLeft, ChevronRight, Menu, X,
+  ChevronLeft, ChevronRight, X,
 } from "lucide-react"
 import { toast } from "sonner"
 import Link from "next/link"
@@ -22,6 +22,7 @@ import { CommunitySettingsModal } from "@/components/modules/CommunitySettingsMo
 import { joinModule, leaveModule, getModuleMembers, removeMember, updateMemberRole } from "@/actions/modules"
 import { normalizeCommunityRole } from "@/lib/roles"
 import { useViewer } from "@/hooks/useViewer"
+import UserAvatar from "@/components/UserAvatar"
 import { useCommunityResources } from "@/components/groups/useCommunityData"
 import { createClient } from "@/lib/supabase/client"
 
@@ -404,7 +405,7 @@ function CommunitySidebar({ id }: { id: string }) {
 
 // ─── Module Header ─────────────────────────────────────────────────────────
 
-function RoleBadge({ role, compact }: { role: string | undefined; compact?: boolean }) {
+function RoleBadge({ role, minimal }: { role: string | undefined; minimal?: boolean }) {
   const norm = normalizeCommunityRole(role)
   if (norm === "viewer" || !role) return null
 
@@ -426,10 +427,16 @@ function RoleBadge({ role, compact }: { role: string | undefined; compact?: bool
     label = "MEMBER"
   }
 
-  if (compact) {
+  if (minimal) {
+    // Tiny inline chip for phones — being in the group already implies MEMBER,
+    // so only the exceptional roles show here.
+    if (norm === "member") return null
     return (
-      <span title={label} className={`flex items-center justify-center w-8 h-8 rounded-full border-[2px] border-foreground shadow-[2px_2px_0_black] ${tone}`}>
-        <Icon className="w-4 h-4" />
+      <span
+        title={label}
+        className={`flex items-center justify-center w-6 h-6 rounded-[100px] border-[1.5px] border-foreground shadow-[1.5px_1.5px_0px_black] ${tone}`}
+      >
+        <Icon className="w-3 h-3" />
       </span>
     )
   }
@@ -492,30 +499,38 @@ function CommunityHeader({
 
   return (
     <header
-      className="flex items-center bg-[#FFD600] border-[3px] border-foreground rounded-[1.5rem] shadow-[6px_6px_0px_black] px-5 py-3 gap-3 sticky top-4 z-40 shrink-0 transition-all duration-300 ease-in-out"
+      className="flex items-center bg-[#FFD600] border-[3px] border-foreground rounded-[1.5rem] shadow-[6px_6px_0px_black] px-3 md:px-5 py-2 md:py-3 gap-2 md:gap-3 sticky top-4 z-40 shrink-0 transition-all duration-300 ease-in-out"
     >
       <Link
         href={isSubPage ? `/groups/${id}` : `/groups`}
-        className="px-3 py-1.5 flex items-center justify-center gap-1.5 rounded-[0.875rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all shrink-0"
+        className="px-2 h-9 md:h-10 flex items-center justify-center gap-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all shrink-0"
         title={isSubPage ? "Back to group home" : "Back to Groups"}
       >
         <ArrowLeft className="w-4 h-4" />
         <span className="hidden md:inline">Back</span>
       </Link>
 
-      <div className="flex flex-col md:flex-row md:items-center gap-1 md:gap-3 flex-1 overflow-hidden">
-        <span className="font-heading font-extrabold text-foreground leading-none truncate text-[18px]">
+      {/* Title + meta — single row so the bar stays short on phones */}
+      <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
+        <span className="font-heading font-extrabold text-foreground leading-none truncate text-[16px] md:text-[18px]">
           {community.name}
         </span>
-        <span className="font-mono text-[12px] text-foreground opacity-80">
-          <span className="hidden md:inline mr-2">•</span>
-          {community.member_count} member{community.member_count !== 1 ? "s" : ""}
+        <span
+          title={`${community.member_count ?? "—"} ${community.member_count === 1 ? "member" : "members"}`}
+          className="flex items-center gap-1 px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-card shadow-[1.5px_1.5px_0px_black] font-mono text-[11px] font-bold text-foreground shrink-0"
+        >
+          <Users className="w-3 h-3" />
+          {community.member_count ?? "—"}
+        </span>
+        <span className="md:hidden shrink-0 flex">
+          <RoleBadge role={effectiveRole} minimal />
+        </span>
+        <span className="hidden md:inline-flex shrink-0">
+          <RoleBadge role={effectiveRole} />
         </span>
       </div>
 
       <div className="flex items-center gap-2 shrink-0">
-        <RoleBadge role={effectiveRole} compact />
-
         {canManage && (
           <button
             onClick={onManageMembers}
@@ -568,11 +583,12 @@ function CommunityHeader({
 
         <button
           onClick={onMobileMenuOpen}
-          className="ml-auto flex items-center justify-center bg-card hover:bg-background border-[2px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-[8px] md:hidden shrink-0"
+          className="flex items-center justify-center bg-[#FFD600] hover:bg-[#f0cc00] border-[2px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-[8px] md:hidden shrink-0"
           style={{ width: 36, height: 36 }}
           title="Faculty Notes"
+          aria-label="Faculty Notes"
         >
-          <Menu style={{ width: 18, height: 18, color: "var(--foreground)" }} />
+          <GraduationCap style={{ width: 18, height: 18, color: "var(--foreground)" }} />
         </button>
       </div>
     </header>
@@ -807,31 +823,30 @@ function ManageMembersModal({
                       key={m.id}
                       className="flex items-center justify-between gap-3 p-3 rounded-[1rem] border-[2px] border-foreground bg-card hover:bg-background transition-colors"
                     >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-[8px] bg-[#FFD600] border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0 shadow-[2px_2px_0px_black]">
-                          {m.profile_pic ? (
-                            <img src={m.profile_pic} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <span className="font-bold font-heading text-[16px] text-foreground">
-                              {m.name?.[0]?.toUpperCase()}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <UserAvatar
+                          src={m.profile_pic}
+                          name={m.name}
+                          className="w-10 h-10 rounded-[8px] bg-[#FFD600] border-[1.5px] border-foreground shrink-0 shadow-[2px_2px_0px_black]"
+                          letterClassName="font-bold font-heading text-[16px] text-foreground"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-bold text-[14px] font-heading text-foreground truncate">
+                              {m.name || "Unknown User"}
                             </span>
-                          )}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold text-[14px] font-heading text-foreground line-clamp-1 flex items-center gap-2">
-                            {m.name || "Unknown User"}
                             {normRole === "owner" && (
-                              <span className="text-[10px] bg-[#FFD600] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#FFD600] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                 <Crown className="w-3 h-3" /> Owner
                               </span>
                             )}
                             {normRole === "curator" && (
-                              <span className="text-[10px] bg-[#0057FF] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#0057FF] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                 <Shield className="w-3 h-3" /> Curator
                               </span>
                             )}
                             {normRole === "member" && (
-                              <span className="text-[10px] bg-[#00E5FF] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#00E5FF] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                 <User className="w-3 h-3" /> Member
                               </span>
                             )}
