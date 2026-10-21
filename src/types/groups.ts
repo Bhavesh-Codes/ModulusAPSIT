@@ -150,6 +150,8 @@ export interface CommunityResource {
   file: { filename: string; mime_type: string | null; size_bytes: number | null } | null
   /** Shown as "Uploaded by …". Null when unknown (and always null for the hidden dev role). */
   uploaded_by_name: string | null
+  /** Avatar/profile picture URL of the uploader. */
+  uploaded_by_avatar?: string | null
   /** Sharer's user id, so the browser can tell "my" shares. Null for the hidden dev role. */
   shared_by_user_id: string | null
 }

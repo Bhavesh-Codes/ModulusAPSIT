@@ -14,8 +14,25 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
 
     const access = await getCommunityAccess(admin, viewer, id)
 
+    const { data: commMembers } = await admin
+      .from("community_members")
+      .select("user_id")
+      .eq("community_id", id)
+
+    const memberUserIds = (commMembers ?? []).map((m: any) => m.user_id)
+    let actualCount = memberUserIds.length
+    if (memberUserIds.length > 0) {
+      const { data: devUsers } = await admin
+        .from("users")
+        .select("id")
+        .in("id", memberUserIds)
+        .eq("role", "dev")
+      actualCount = memberUserIds.length - (devUsers?.length ?? 0)
+    }
+
     return NextResponse.json({
       ...community,
+      member_count: actualCount,
       membership: access.isMember ? { role: access.role } : null,
       effective_role: access.role,
       can_manage: access.canManage,

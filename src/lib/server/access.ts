@@ -39,6 +39,27 @@ export async function getViewer(): Promise<Viewer> {
   if (error || !user) throw new HttpError("Unauthorized", 401)
 
   const { data: profile } = await supabase.from("users").select("role, name, title").eq("id", user.id).maybeSingle()
+
+  // Auto-create the public.users row for users who signed up but never visited their profile.
+  // This prevents FK violations when inserting into community_members (which refs public.users).
+  if (!profile) {
+    const admin = createAdminClient()
+    await admin.from("users").upsert({
+      id: user.id,
+      email: user.email ?? "",
+      name:
+        (user.user_metadata?.full_name as string | undefined) ??
+        (user.user_metadata?.name as string | undefined) ??
+        user.email?.split("@")[0] ??
+        "User",
+      profile_pic:
+        (user.user_metadata?.avatar_url as string | undefined) ??
+        (user.user_metadata?.picture as string | undefined) ??
+        null,
+      role: "faculty",
+    }, { onConflict: "id", ignoreDuplicates: true })
+  }
+
   const systemRole = (profile?.role as string | undefined) ?? "faculty"
   const isAdmin = isPlatformAdmin(systemRole)
   const platformRole: PlatformRole = isAdmin ? "admin" : "user"

@@ -87,6 +87,11 @@ export default function GroupLibraryPage() {
     return groups
   }, [filtered, selectedTeacher])
 
+  const selectedTeacherAvatar = useMemo(() => {
+    if (!selectedTeacher) return null
+    return resources.find((r) => r.uploaded_by_name === selectedTeacher)?.uploaded_by_avatar || null
+  }, [resources, selectedTeacher])
+
   const gridSubjects = useMemo(
     () =>
       subjects
@@ -261,8 +266,17 @@ export default function GroupLibraryPage() {
           {selectedTeacher && (
             <div className="bg-[#FFD600] border-[3px] border-foreground rounded-[1.25rem] p-4 shadow-[4px_4px_0px_black] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-[10px] bg-card border-[2px] border-foreground flex items-center justify-center font-heading font-extrabold text-[16px] text-foreground shadow-[2px_2px_0px_black]">
-                  {selectedTeacher[0]?.toUpperCase()}
+                <div className="w-10 h-10 rounded-[10px] bg-card border-[2px] border-foreground overflow-hidden flex items-center justify-center font-heading font-extrabold text-[16px] text-foreground shadow-[2px_2px_0px_black] shrink-0">
+                  {selectedTeacherAvatar ? (
+                    <img
+                      src={selectedTeacherAvatar}
+                      alt={selectedTeacher}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  ) : (
+                    selectedTeacher[0]?.toUpperCase()
+                  )}
                 </div>
                 <div>
                   <h3 className="font-heading font-extrabold text-[16px] text-foreground leading-tight">

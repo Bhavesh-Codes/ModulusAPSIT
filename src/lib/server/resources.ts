@@ -6,16 +6,16 @@ import { normalizeResourceType, type CommunityResource, type ResourceType, type 
 export const RESOURCE_SELECT = `
   id, community_id, vault_item_id, shared_by_user_id, shared_by_name, title, tags, created_at,
   subject_id, module_id, status, is_pinned, supersedes_share_id,
-  users ( id, name, title, role ),
+  users ( id, name, title, role, profile_pic ),
   subjects ( id, name, short_name, code, semester, scheme, subject_type ),
   subject_modules ( id, number, title ),
-  vault_items ( id, item_type, title, url, resource_type, academic_year, description, uploaded_by_name, files ( filename, mime_type, size_bytes ) )
+  vault_items ( id, item_type, title, url, resource_type, academic_year, description, uploaded_by_name, owner_id, files ( filename, mime_type, size_bytes ) )
 `
 
 const one = <T,>(v: T | T[] | null | undefined): T | null => (Array.isArray(v) ? (v[0] ?? null) : (v ?? null))
 
 /** Turns a raw row into what the browser may see. */
-export function toResource(row: any): CommunityResource {
+export function toResource(row: any, userProfileMap?: Map<string, any>): CommunityResource {
   const sharer = one<any>(row.users)
   const vi = one<any>(row.vault_items)
   const file = one<any>(vi?.files)
@@ -34,6 +34,10 @@ export function toResource(row: any): CommunityResource {
     rawStoredName && rawStoredName.trim().toLowerCase() !== "faculty member" ? rawStoredName.trim() : null
 
   const uploadedByName = sharerName || validStoredName || null
+
+  const userId = row.shared_by_user_id || vi?.owner_id || sharer?.id || null
+  const avatarFromMap = userId ? userProfileMap?.get(userId)?.profile_pic : null
+  const uploadedByAvatar = avatarFromMap || sharer?.profile_pic || null
 
   return {
     id: row.id,
@@ -66,6 +70,7 @@ export function toResource(row: any): CommunityResource {
       ? { filename: file.filename, mime_type: file.mime_type ?? null, size_bytes: file.size_bytes ?? null }
       : null,
     uploaded_by_name: uploadedByName,
+    uploaded_by_avatar: uploadedByAvatar,
     shared_by_user_id: row.shared_by_user_id ?? null,
   }
 }

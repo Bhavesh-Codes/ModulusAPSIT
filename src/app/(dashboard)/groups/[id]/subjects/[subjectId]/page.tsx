@@ -70,6 +70,11 @@ export default function SubjectPage() {
     setFilters((f) => ({ ...f, ...p }))
   }
 
+  const selectedTeacherAvatar = useMemo(() => {
+    if (!selectedTeacher) return null
+    return allResources.find((r) => r.uploaded_by_name === selectedTeacher)?.uploaded_by_avatar || null
+  }, [allResources, selectedTeacher])
+
   const forSubject = useMemo(() => allResources.filter((r) => r.subject?.id === subjectId), [allResources, subjectId])
   const visible = useMemo(() => applyFilters(forSubject, { ...effectiveFilters, subjectId: "" }), [forSubject, effectiveFilters])
 
@@ -173,8 +178,19 @@ export default function SubjectPage() {
 
       {selectedTeacher && (
         <div className="bg-[#FFD600] border-[2px] border-foreground rounded-[1rem] p-3 shadow-[3px_3px_0px_black] flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <User className="w-4 h-4 text-foreground" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-[6px] bg-card border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0 text-[12px] font-heading font-extrabold shadow-[1px_1px_0px_black]">
+              {selectedTeacherAvatar ? (
+                <img
+                  src={selectedTeacherAvatar}
+                  alt={selectedTeacher}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                selectedTeacher[0]?.toUpperCase()
+              )}
+            </div>
             <span className="font-heading font-bold text-[14px] text-foreground">
               Showing notes by {selectedTeacher} ({visible.length} in this subject)
             </span>
@@ -188,6 +204,7 @@ export default function SubjectPage() {
           </button>
         </div>
       )}
+
 
       <ResourceFilters
         filters={effectiveFilters}

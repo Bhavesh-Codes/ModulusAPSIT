@@ -302,7 +302,16 @@ export function ResourceCard({
 
       <div className="mt-auto pt-3 border-t-[2px] border-dashed border-foreground flex items-center justify-between gap-2 font-sans text-[12px] text-muted-foreground">
         <span className="flex items-center gap-1.5 min-w-0">
-          <User className="w-3.5 h-3.5 shrink-0" />
+          {resource.uploaded_by_avatar ? (
+            <img
+              src={resource.uploaded_by_avatar}
+              alt=""
+              className="w-4 h-4 rounded-full object-cover border-[1px] border-foreground shrink-0"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <User className="w-3.5 h-3.5 shrink-0" />
+          )}
           <span className="truncate">{resource.uploaded_by_name ? `Uploaded by ${resource.uploaded_by_name}` : "Uploaded"}</span>
         </span>
         <span className="font-mono text-[11px] shrink-0">

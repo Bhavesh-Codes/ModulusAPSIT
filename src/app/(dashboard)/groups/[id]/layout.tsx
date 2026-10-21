@@ -23,6 +23,7 @@ import { joinModule, leaveModule, getModuleMembers, removeMember, updateMemberRo
 import { normalizeCommunityRole } from "@/lib/roles"
 import { useViewer } from "@/hooks/useViewer"
 import { useCommunityResources } from "@/components/groups/useCommunityData"
+import { createClient } from "@/lib/supabase/client"
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -49,30 +50,62 @@ function CommunitySidebar({ id }: { id: string }) {
     queryFn: () => getModuleMembers(id),
   })
 
+  // Fallback: fetch user profiles for any uploaders whose avatars weren't found in community_members
+  const uploaderUserIds = useMemo(() => {
+    return Array.from(new Set(resources.map((r) => r.shared_by_user_id).filter(Boolean))) as string[]
+  }, [resources])
+
+  const { data: uploaderProfiles = [] } = useQuery({
+    queryKey: ["uploaderProfiles", uploaderUserIds],
+    enabled: uploaderUserIds.length > 0,
+    queryFn: async () => {
+      const supabase = createClient()
+      const { data } = await supabase
+        .from("users")
+        .select("id, name, profile_pic")
+        .in("id", uploaderUserIds)
+      return data ?? []
+    },
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const userProfileMap = useMemo(() => {
+    const map = new Map<string, string | null>()
+    for (const m of members) {
+      if (m.id && m.profile_pic) map.set(m.id, m.profile_pic)
+      if (m.name && m.profile_pic) map.set(m.name.trim().toLowerCase(), m.profile_pic)
+    }
+    for (const u of uploaderProfiles) {
+      if (u.id && u.profile_pic) map.set(u.id, u.profile_pic)
+      if (u.name && u.profile_pic) map.set(u.name.trim().toLowerCase(), u.profile_pic)
+    }
+    return map
+  }, [members, uploaderProfiles])
+
   // Extract faculty members who belong to this domain and have uploaded files
   const teacherList = useMemo(() => {
     const map = new Map<string, { count: number; profilePic?: string | null }>()
-
-    // Map members by id and lowercase name for profile pic lookup
-    const memberMap = new Map<string, any>()
-    for (const m of members) {
-      if (m.id) memberMap.set(m.id, m)
-      if (m.name) memberMap.set(m.name.trim().toLowerCase(), m)
-    }
 
     for (const r of resources) {
       const name = r.uploaded_by_name?.trim()
       if (!name) continue
 
+      const avatar =
+        r.uploaded_by_avatar ||
+        (r.shared_by_user_id ? userProfileMap.get(r.shared_by_user_id) : null) ||
+        userProfileMap.get(name.toLowerCase()) ||
+        null
+
       const existing = map.get(name)
       if (existing) {
         existing.count += 1
+        if (!existing.profilePic && avatar) {
+          existing.profilePic = avatar
+        }
       } else {
-        const m = (r.shared_by_user_id ? memberMap.get(r.shared_by_user_id) : null) ||
-                  memberMap.get(name.toLowerCase())
         map.set(name, {
           count: 1,
-          profilePic: m?.profile_pic || null,
+          profilePic: avatar,
         })
       }
     }
@@ -84,7 +117,7 @@ function CommunitySidebar({ id }: { id: string }) {
         profilePic: data.profilePic,
       }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
-  }, [resources, members])
+  }, [resources, userProfileMap])
 
   const totalNotes = resources.length
 
@@ -136,7 +169,12 @@ function CommunitySidebar({ id }: { id: string }) {
                 `}
               >
                 {t.profilePic ? (
-                  <img src={t.profilePic} alt="" className="w-full h-full object-cover" />
+                  <img
+                    src={t.profilePic}
+                    alt={t.name}
+                    className="w-full h-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
                 ) : (
                   <span className="font-heading font-extrabold text-[14px] text-foreground">
                     {t.name[0]?.toUpperCase()}
@@ -210,7 +248,12 @@ function CommunitySidebar({ id }: { id: string }) {
               >
                 <div className="w-9 h-9 rounded-[8px] bg-[#00E5FF] border-[1.5px] border-foreground overflow-hidden flex items-center justify-center shrink-0 shadow-[1px_1px_0px_black]">
                   {t.profilePic ? (
-                    <img src={t.profilePic} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={t.profilePic}
+                      alt={t.name}
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
                   ) : (
                     <span className="font-heading font-extrabold text-[14px] text-foreground">
                       {t.name[0]?.toUpperCase()}
@@ -427,6 +470,7 @@ function CommunityHeader({
       toast.success("Group joined!")
       queryClient.invalidateQueries({ queryKey: ["community", id] })
       queryClient.invalidateQueries({ queryKey: ["communities"] })
+      queryClient.invalidateQueries({ queryKey: ["communityMembers", id] })
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to join")
@@ -439,6 +483,7 @@ function CommunityHeader({
       toast.success("Left group")
       queryClient.invalidateQueries({ queryKey: ["community", id] })
       queryClient.invalidateQueries({ queryKey: ["communities"] })
+      queryClient.invalidateQueries({ queryKey: ["communityMembers", id] })
     },
     onError: (err: any) => {
       toast.error(err.message || "Failed to leave")
@@ -491,7 +536,7 @@ function CommunityHeader({
           <button
             onClick={() => joinMutation.mutate()}
             disabled={joinMutation.isPending}
-            className="hidden md:flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
+            className="flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
           >
             {joinMutation.isPending ? (
               <Loader2 className="w-3 h-3 animate-spin" />
@@ -510,7 +555,7 @@ function CommunityHeader({
               }
             }}
             disabled={leaveMutation.isPending}
-            className="hidden md:flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
+            className="flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
           >
             {leaveMutation.isPending ? (
               <Loader2 className="w-3 h-3 animate-spin" />

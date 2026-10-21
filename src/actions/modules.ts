@@ -35,11 +35,31 @@ async function visibleMemberRows(admin: AdminClient, moduleId: string) {
     `)
     .eq("community_id", moduleId)
 
-  if (error) throw new Error("Failed to fetch module members.")
+  if (error) {
+    console.error("visibleMemberRows error, falling back to direct query:", error)
+    const { data: raw, error: rawErr } = await admin
+      .from("community_members")
+      .select("role, user_id, joined_at")
+      .eq("community_id", moduleId)
+    if (rawErr) throw new Error("Failed to fetch module members.")
+
+    const userIds = (raw ?? []).map((r: any) => r.user_id)
+    const { data: usersData } = await admin
+      .from("users")
+      .select("id, name, email, profile_pic, role")
+      .in("id", userIds)
+    const uMap = new Map((usersData ?? []).map((u: any) => [u.id, u]))
+    return (raw ?? [])
+      .map((r: any) => ({ ...r, users: uMap.get(r.user_id) }))
+      .filter((row: any) => {
+        const u = row.users
+        return !u || (u.role ?? "").toLowerCase() !== "dev"
+      })
+  }
 
   return (data ?? []).filter((row: any) => {
     const u = Array.isArray(row.users) ? row.users[0] : row.users
-    return u && (u.role ?? "").toLowerCase() !== "dev"
+    return !u || (u.role ?? "").toLowerCase() !== "dev"
   })
 }
 
@@ -72,11 +92,11 @@ export async function createModule(data: CreateModuleData) {
 
   if (insertError) throw new Error(insertError.message)
 
-  // Add the creator as owner in community_members as well
+  // Add the creator as owner ('hod') in community_members as well
   await admin.from("community_members").insert([{
     community_id: module_.id,
     user_id: viewer.userId,
-    role: "owner",
+    role: "hod",
   }])
 
   revalidatePath("/groups")
@@ -88,7 +108,23 @@ export async function joinModule(moduleId: string) {
   const admin = createAdminClient()
 
   if (viewer.isAdmin) {
-    throw new Error("As an Admin, you already have full access to every group.")
+    // If an Admin/HOD joins, ensure they have a record so they are listed & counted
+    const { data: existingAdmin } = await admin
+      .from("community_members")
+      .select("role")
+      .eq("community_id", moduleId)
+      .eq("user_id", viewer.userId)
+      .maybeSingle()
+
+    if (!existingAdmin) {
+      await admin
+        .from("community_members")
+        .insert([{ community_id: moduleId, user_id: viewer.userId, role: "hod" }])
+      await syncMemberCount(moduleId)
+      revalidatePath(`/groups/${moduleId}`)
+      revalidatePath("/groups")
+    }
+    return { success: true, role: "owner" as const }
   }
 
   const { data: module_, error: fetchError } = await admin
@@ -111,12 +147,15 @@ export async function joinModule(moduleId: string) {
     return { success: true, role: normalizeCommunityRole(existing.role) }
   }
 
-  // Join as standard 'member'
+  // Join as standard 'faculty' in DB (maps to 'member' in UI) to satisfy DB check constraint
   const { error } = await admin
     .from("community_members")
-    .insert([{ community_id: moduleId, user_id: viewer.userId, role: "member" }])
+    .insert([{ community_id: moduleId, user_id: viewer.userId, role: "faculty" }])
 
-  if (error) throw new Error(error.message)
+  if (error) {
+    console.error("joinModule insert error:", error)
+    throw new Error(error.message)
+  }
 
   await syncMemberCount(moduleId)
 
@@ -322,15 +361,15 @@ export async function updateMemberRole(
 
     // Set new owner_id on community
     await admin.from("communities").update({ owner_id: targetUserId }).eq("id", moduleId)
-    // Ensure target has member record with 'owner'
+    // Ensure target has member record with 'hod' (DB check constraint allows 'faculty' or 'hod')
     await admin.from("community_members").upsert({
       community_id: moduleId,
       user_id: targetUserId,
-      role: "owner",
+      role: "hod",
     })
-    // Demote previous owner to curator if not admin
+    // Demote previous owner to curator ('hod') if not admin
     if (access.permissions.isOwner && viewer.userId !== targetUserId) {
-      await admin.from("community_members").update({ role: "curator" }).eq("community_id", moduleId).eq("user_id", viewer.userId)
+      await admin.from("community_members").update({ role: "hod" }).eq("community_id", moduleId).eq("user_id", viewer.userId)
     }
 
     await syncMemberCount(moduleId)
@@ -338,10 +377,11 @@ export async function updateMemberRole(
     return { success: true }
   }
 
-  // Update target role to curator or member
+  // Update target role to curator ('hod') or member ('faculty')
+  const dbRole = newRole === "curator" ? "hod" : "faculty"
   const { error } = await admin
     .from("community_members")
-    .update({ role: newRole })
+    .update({ role: dbRole })
     .eq("community_id", moduleId)
     .eq("user_id", targetUserId)
 
@@ -350,6 +390,7 @@ export async function updateMemberRole(
     throw new Error("Failed to update member role.")
   }
 
+  await syncMemberCount(moduleId)
   revalidatePath(`/groups/${moduleId}`)
   return { success: true }
 }
