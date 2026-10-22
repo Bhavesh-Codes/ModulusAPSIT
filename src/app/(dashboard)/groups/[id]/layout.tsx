@@ -369,26 +369,25 @@ function CommunitySidebar({ id }: { id: string }) {
       >
         <div
           className="shrink-0 flex items-center justify-between border-b-[2px] border-b-[var(--foreground)] bg-card px-4"
-          style={{ height: 64 }}
+          style={{ height: 50 }}
         >
           <div className="flex items-center gap-2">
             <GraduationCap className="w-4 h-4 text-foreground" />
             <span className="font-heading font-extrabold text-[14px] text-foreground">
               Faculty Notes
             </span>
-            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-[6px] border-[1.5px] border-foreground bg-muted">
+            <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded-[4px] border-[1.2px] border-foreground bg-muted">
               {teacherList.length}
             </span>
           </div>
           <button
             onClick={() => setCommunitySidebarMobileOpen(false)}
-            className="flex items-center justify-center bg-card hover:bg-[#FFD600] border-[2px] border-foreground shadow-[3px_3px_0_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all rounded-[10px]"
-            style={{ width: 40, height: 40, minWidth: 40 }}
+            className="flex items-center justify-center bg-card hover:bg-[#FFD600] border-[1.5px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all rounded-[8px] w-7 h-7"
           >
-            <X style={{ width: 18, height: 18, color: "var(--foreground)" }} />
+            <X className="w-4 h-4 text-foreground" />
           </button>
         </div>
-        <nav className="flex-1 overflow-y-auto flex flex-col py-4 pb-12">
+        <nav className="flex-1 overflow-y-auto flex flex-col py-3 pb-12">
           {renderFacultyList(false)}
         </nav>
       </aside>
@@ -434,15 +433,15 @@ function RoleBadge({ role, minimal }: { role: string | undefined; minimal?: bool
     return (
       <span
         title={label}
-        className={`flex items-center justify-center w-6 h-6 rounded-[100px] border-[1.5px] border-foreground shadow-[1.5px_1.5px_0px_black] ${tone}`}
+        className={`flex items-center justify-center w-5 h-5 rounded-full border-[1.2px] border-foreground shadow-[1px_1px_0px_black] ${tone}`}
       >
-        <Icon className="w-3 h-3" />
+        <Icon className="w-2.5 h-2.5" />
       </span>
     )
   }
   return (
-    <span className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1 rounded-[100px] border-[2px] border-foreground shadow-[2px_2px_0px_black] font-mono text-[12px] font-bold tracking-wide ${tone}`}>
-      <Icon className="w-3.5 h-3.5" />
+    <span className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border-[1.2px] border-foreground shadow-[1px_1px_0px_black] font-mono text-[10px] font-bold tracking-wide ${tone}`}>
+      <Icon className="w-3 h-3" />
       {label}
     </span>
   )
@@ -660,7 +659,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   const groupRoot = `/groups/${id}`
   const isSubPage = pathname !== groupRoot && !pathname.endsWith(`/groups/${id}`) && pathname !== `/modules/${id}` && !pathname.endsWith(`/modules/${id}`)
 
-  // Sidebar width for content area right-padding (desktop only). Everyone can open the vault.
+  // Sidebar width for content area right-padding (desktop only).
   const sidebarWidth = communitySidebarOpen ? SIDEBAR_OPEN_WIDTH : SIDEBAR_COLLAPSED_WIDTH
 
   return (
@@ -673,7 +672,7 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         className="[padding-right:0] md:[padding-right:var(--sidebar-w)] transition-[padding-right] duration-[250ms] ease-in-out"
         style={{ "--sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
       >
-        <div className="w-full max-w-[1280px] mx-auto px-4 md:px-8 pt-4 pb-32 space-y-6">
+        <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-4 pb-32 space-y-6">
           {/* Module header */}
           <CommunityHeader
             community={community}

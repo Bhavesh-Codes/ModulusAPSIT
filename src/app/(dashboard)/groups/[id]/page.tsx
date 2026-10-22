@@ -118,27 +118,29 @@ export default function GroupLibraryPage() {
   }
 
   return (
-    <div className="space-y-6 relative min-h-[70vh] mt-4">
-      {/* Recently Added Strip */}
+    <div className="space-y-4 sm:space-y-5 relative min-h-[70vh] mt-2">
+      {/* Recently Added Strip — simplified, compact & sleek */}
       {recentResources.length > 0 && browsing && (
-        <div className="bg-card border-[3px] border-foreground rounded-[1rem] shadow-[4px_4px_0px_black] p-3 flex flex-col md:flex-row items-start md:items-center gap-4 overflow-x-auto no-scrollbar">
-          <div className="flex items-center gap-2 shrink-0">
-            <div className="w-8 h-8 rounded-[8px] bg-[#FFD600] border-[2px] border-foreground flex items-center justify-center">
-              <Clock className="w-4 h-4 text-foreground" />
-            </div>
-            <span className="font-heading font-bold text-[14px]">Recently Added</span>
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
+          <div className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-[5px] bg-[#FFD600] border-[1.2px] border-foreground shadow-[1px_1px_0px_black]">
+            <Clock className="w-3 h-3 text-foreground" />
+            <span className="font-heading font-extrabold text-[10px] text-foreground uppercase tracking-wider">
+              Recent
+            </span>
           </div>
-          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar pb-1 md:pb-0 w-full">
+          <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
             {recentResources.map((item) => (
               <Link
                 key={item.id}
                 href={item.subject ? `/groups/${id}/subjects/${item.subject.id}` : `/groups/${id}`}
-                className="shrink-0 flex items-center gap-2 bg-background border-[2px] border-foreground rounded-[8px] px-3 py-1.5 hover:bg-[#FFD600] transition-colors"
+                className="shrink-0 flex items-center gap-1.5 bg-card border-[1.2px] border-foreground/50 rounded-[6px] px-2.5 py-0.5 shadow-[1px_1px_0px_rgba(0,0,0,0.12)] hover:border-foreground hover:bg-[#FFD600] hover:shadow-[1.5px_1.5px_0px_black] hover:translate-x-[0.5px] hover:translate-y-[0.5px] transition-all group"
                 title={item.title}
               >
-                <div className="w-2 h-2 rounded-full bg-[#0057FF]" />
-                <span className="font-heading font-bold text-[12px] truncate max-w-[150px]">{item.title}</span>
-                <ArrowRight className="w-3 h-3 ml-1" />
+                <span className="w-1.5 h-1.5 rounded-full bg-[#0057FF] shrink-0" />
+                <span className="font-heading font-bold text-[12px] text-foreground truncate max-w-[140px] sm:max-w-[180px]">
+                  {item.title}
+                </span>
+                <ArrowRight className="w-3 h-3 text-muted-foreground group-hover:text-foreground transition-colors ml-0.5" />
               </Link>
             ))}
           </div>

@@ -274,82 +274,79 @@ export function ResourceCard({
       </div>
 
       <div className="p-3.5 flex-1 flex flex-col justify-between gap-2.5">
+        <div className="min-w-0 space-y-1.5">
+          <h3 className="font-heading font-bold text-[16px] text-foreground leading-snug line-clamp-2" title={resource.title}>
+            {resource.is_pinned && <Pin className="inline w-3.5 h-3.5 mr-1 -mt-0.5 text-[#FF3CAC]" aria-label="Pinned" />}
+            {resource.title}
+          </h3>
 
-      <div className="min-w-0 space-y-1.5">
-        <h3 className="font-heading font-bold text-[16px] text-foreground leading-snug line-clamp-2" title={resource.title}>
-          {resource.is_pinned && <Pin className="inline w-3.5 h-3.5 mr-1 -mt-0.5 text-[#FF3CAC]" aria-label="Pinned" />}
-          {resource.title}
-        </h3>
-
-        {showSubject && resource.subject && (
-          <Link
-            href={`/groups/${resource.community_id}/subjects/${resource.subject.id}`}
-            className="font-mono text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 min-w-0 transition-colors"
-          >
-            <BookOpen className="w-3 h-3 shrink-0" />
-            <span className="truncate hover:underline">
-              {resource.subject.code ? `${resource.subject.code} · ` : ""}
-              {resource.subject.name}
-              {resource.module ? ` › Module ${resource.module.number}` : ""}
-            </span>
-          </Link>
-        )}
-
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[10px] font-bold">
-            {resourceTypeLabel(resource.resource_type)}
-          </span>
-          {resource.academic_year && (
-            <span
-              className={`px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground font-mono text-[10px] font-bold ${
-                olderYear ? "bg-[#FF6B00] text-white" : "bg-background"
-              }`}
-              title={olderYear ? "From an older academic year" : "Current academic year"}
+          {showSubject && resource.subject && (
+            <Link
+              href={`/groups/${resource.community_id}/subjects/${resource.subject.id}`}
+              className="font-mono text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 min-w-0 transition-colors"
             >
-              {resource.academic_year}
-            </span>
+              <BookOpen className="w-3 h-3 shrink-0" />
+              <span className="truncate hover:underline">
+                {resource.subject.code ? `${resource.subject.code} · ` : ""}
+                {resource.subject.name}
+                {resource.module ? ` › Module ${resource.module.number}` : ""}
+              </span>
+            </Link>
           )}
-          {inactive && (
-            <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-muted font-mono text-[10px] font-bold uppercase">
-              {resource.status}
+
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[10px] font-bold">
+              {resourceTypeLabel(resource.resource_type)}
             </span>
+            {olderYear && (
+              <span
+                className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground font-mono text-[10px] font-bold bg-[#FF6B00] text-white"
+                title="From an older academic year"
+              >
+                {resource.academic_year}
+              </span>
+            )}
+            {inactive && (
+              <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-muted font-mono text-[10px] font-bold uppercase">
+                {resource.status}
+              </span>
+            )}
+          </div>
+
+          {resource.description && (
+            <p className="font-sans text-[13px] text-muted-foreground line-clamp-2">{resource.description}</p>
+          )}
+
+          {resource.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {resource.tags.slice(0, 4).map((t) => (
+                <span key={t} className="px-2 py-0.5 rounded-[100px] border-[1.2px] border-foreground bg-background font-mono text-[10px] font-bold">
+                  #{t}
+                </span>
+              ))}
+              {resource.tags.length > 4 && <span className="font-mono text-[10px] text-muted-foreground">+{resource.tags.length - 4}</span>}
+            </div>
           )}
         </div>
 
-        {resource.description && (
-          <p className="font-sans text-[13px] text-muted-foreground line-clamp-2">{resource.description}</p>
-        )}
-
-        {resource.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5">
-            {resource.tags.slice(0, 4).map((t) => (
-              <span key={t} className="px-2 py-0.5 rounded-[100px] border-[1.2px] border-foreground bg-background font-mono text-[10px] font-bold">
-                #{t}
-              </span>
-            ))}
-            {resource.tags.length > 4 && <span className="font-mono text-[10px] text-muted-foreground">+{resource.tags.length - 4}</span>}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-auto pt-3 border-t-[2px] border-dashed border-foreground flex items-center justify-between gap-2 font-sans text-[12px] text-muted-foreground">
-        <span className="flex items-center gap-1.5 min-w-0">
-          {resource.uploaded_by_avatar ? (
-            <img
-              src={resource.uploaded_by_avatar}
-              alt=""
-              className="w-4 h-4 rounded-full object-cover border-[1px] border-foreground shrink-0"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <User className="w-3.5 h-3.5 shrink-0" />
-          )}
-          <span className="truncate">{resource.uploaded_by_name ? `Uploaded by ${resource.uploaded_by_name}` : "Uploaded"}</span>
-        </span>
-        <span className="font-mono text-[11px] shrink-0">
-          {isLink ? getUrlDomain(url) : formatBytes(resource.file?.size_bytes)} · {new Date(resource.created_at).toLocaleDateString()}
-        </span>
-      </div>
+        <div className="mt-auto pt-3 border-t-[2px] border-dashed border-foreground flex items-center justify-between gap-2 font-sans text-[12px] text-muted-foreground">
+          <span className="flex items-center gap-1.5 min-w-0">
+            {resource.uploaded_by_avatar ? (
+              <img
+                src={resource.uploaded_by_avatar}
+                alt=""
+                className="w-4 h-4 rounded-full object-cover border-[1px] border-foreground shrink-0"
+                referrerPolicy="no-referrer"
+              />
+            ) : (
+              <User className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span className="truncate">{resource.uploaded_by_name ? `Uploaded by ${resource.uploaded_by_name}` : "Uploaded"}</span>
+          </span>
+          <span className="font-mono text-[11px] shrink-0">
+            {isLink ? getUrlDomain(url) : formatBytes(resource.file?.size_bytes)} · {new Date(resource.created_at).toLocaleDateString()}
+          </span>
+        </div>
       </div>
     </article>
   )
