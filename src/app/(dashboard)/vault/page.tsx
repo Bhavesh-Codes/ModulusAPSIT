@@ -296,6 +296,7 @@ type UploadItem = {
   tags: string[];
   relativePath: string;
   isTooLarge?: boolean;
+  hashPromise?: Promise<string | null>;
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
@@ -330,6 +331,7 @@ function UploadModal({
         tags: [],
         relativePath: f.webkitRelativePath || "",
         isTooLarge: f.size > MAX_FILE_SIZE,
+        hashPromise: f.size <= MAX_FILE_SIZE ? sha256Hex(f).catch(() => null) : undefined,
       })))
     }
   }, [isOpen])
@@ -343,6 +345,7 @@ function UploadModal({
         tags: [],
         relativePath: f.webkitRelativePath || "",
         isTooLarge: f.size > MAX_FILE_SIZE,
+        hashPromise: f.size <= MAX_FILE_SIZE ? sha256Hex(f).catch(() => null) : undefined,
       }))
       setItems(prev => [...prev, ...newItems])
     }
@@ -359,7 +362,7 @@ function UploadModal({
     const validItems = items.filter(i => !i.isTooLarge)
     if (validItems.length === 0) return
     setIsUploading(true)
-    const toastId = toast.loading(`Uploading ${validItems.length} file(s)…`)
+    const toastId = toast.loading(`Securing ${validItems.length} file(s)…`)
 
     try {
       const folderMap = new Map<string, string>()
@@ -381,36 +384,65 @@ function UploadModal({
         return currentParent
       }
 
-      for (let i = 0; i < validItems.length; i++) {
-        const item = validItems[i]
-        toast.loading(`Securing file ${i + 1} of ${validItems.length}…`, { id: toastId })
-        let targetFolderId = currentFolderId
-
+      // Pre-resolve directory structures if any items have relativePath
+      for (const item of validItems) {
         if (item.relativePath) {
           const parts = item.relativePath.split('/')
           const folderParts = parts.slice(0, -1)
           if (folderParts.length > 0) {
-            targetFolderId = await getFolderId(folderParts, currentFolderId)
+            await getFolderId(folderParts, currentFolderId)
           }
         }
+      }
 
-        const formData = new FormData()
-        // Provide the basename as the 3rd argument to prevent FormData parsing errors with webkitRelativePath
-        const finalName = item.customName.trim() || item.file.name
-        formData.append("file", item.file, finalName)
+      let completedCount = 0
+      const concurrency = 3
+      let nextIndex = 0
 
-        const combinedTags = Array.from(new Set([...globalTags, ...item.tags]))
-        if (combinedTags.length > 0) formData.append("tags", JSON.stringify(combinedTags))
-        if (targetFolderId) formData.append("folder_id", targetFolderId)
-        const hash = await sha256Hex(item.file)
-        if (hash) formData.append("content_hash", hash)
+      const uploadWorker = async () => {
+        while (nextIndex < validItems.length) {
+          const index = nextIndex++
+          const item = validItems[index]
 
-        const res = await fetch("/api/vault/upload", { method: "POST", body: formData })
-        if (!res.ok) {
-          const data = await res.json()
-          throw new Error(data.error || "Upload failed")
+          let targetFolderId = currentFolderId
+          if (item.relativePath) {
+            const parts = item.relativePath.split('/')
+            const folderParts = parts.slice(0, -1)
+            if (folderParts.length > 0) {
+              const pathKey = folderParts.join('/')
+              targetFolderId = folderMap.get(pathKey) || currentFolderId
+            }
+          }
+
+          const formData = new FormData()
+          // Provide the basename as the 3rd argument to prevent FormData parsing errors with webkitRelativePath
+          const finalName = item.customName.trim() || item.file.name
+          formData.append("file", item.file, finalName)
+
+          const combinedTags = Array.from(new Set([...globalTags, ...item.tags]))
+          if (combinedTags.length > 0) formData.append("tags", JSON.stringify(combinedTags))
+          if (targetFolderId) formData.append("folder_id", targetFolderId)
+
+          const hash = item.hashPromise ? await item.hashPromise : await sha256Hex(item.file).catch(() => null)
+          if (hash) formData.append("content_hash", hash)
+
+          const res = await fetch("/api/vault/upload", { method: "POST", body: formData })
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}))
+            throw new Error(data.error || `Upload failed for ${finalName}`)
+          }
+
+          completedCount++
+          toast.loading(`Securing file ${completedCount} of ${validItems.length}…`, { id: toastId })
         }
       }
+
+      const workers = Array.from(
+        { length: Math.min(concurrency, validItems.length) },
+        () => uploadWorker()
+      )
+      await Promise.all(workers)
+
       toast.success("Files secured in Vault!", { id: toastId })
       onUploadComplete()
       queryClient.invalidateQueries({ queryKey: ["vaultFolders"] })
@@ -948,7 +980,6 @@ function FolderCard({
   onDropFile: (type: "file" | "folder", id: string, targetId: string | null) => void
 }) {
   const color = getFolderColor(folder.id)
-  const [isDeleting, setIsDeleting] = useState(false)
   const [isDragOver, setIsDragOver] = useState(false)
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -973,19 +1004,10 @@ function FolderCard({
     } catch { /* ignore */ }
   }
 
-  const handleDelete = async (e: React.MouseEvent) => {
+  const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation()
     if (!window.confirm(`Permanently delete folder "${folder.name}" and move its contents to the parent folder?`)) return
-    setIsDeleting(true)
-    const toastId = toast.loading("Deleting folder...")
-    try {
-      await deleteVaultFolder(folder.id)
-      toast.success("Folder deleted", { id: toastId })
-      onDelete(folder)
-    } catch (err: any) {
-      toast.error(err.message || "Failed to delete", { id: toastId })
-      setIsDeleting(false)
-    }
+    onDelete(folder)
   }
 
   return (
@@ -1027,11 +1049,10 @@ function FolderCard({
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            disabled={isDeleting}
             onClick={(e) => e.stopPropagation()}
             className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity w-8 h-8 rounded-[8px] border-[1.5px] border-foreground bg-card hover:bg-background flex items-center justify-center shadow-[2px_2px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none outline-none focus:outline-none"
           >
-            {isDeleting ? <Loader2 className="w-4 h-4 animate-spin text-foreground" /> : <MoreVertical className="w-4 h-4 text-foreground" />}
+            <MoreVertical className="w-4 h-4 text-foreground" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -1375,7 +1396,7 @@ function FileCard({
 }: {
   item: VaultItem
   folders: VaultFolder[]
-  onDelete: () => void
+  onDelete: (item: VaultItem) => void
   onEdit: (item: VaultItem) => void
   onMove: (item: VaultItem) => void
   onShare: (item: VaultItem) => void
@@ -1388,7 +1409,6 @@ function FileCard({
 }) {
   const [isViewing, setIsViewing] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [isDeleting, setIsDeleting] = useState(false)
 
   const mimeType = item.files?.mime_type ?? ""
   const filename = item.files?.filename ?? ""
@@ -1450,24 +1470,14 @@ function FileCard({
     }
   }
 
-  const handleDelete = async () => {
+  const handleDelete = () => {
     const label = item.item_type === "link" ? "this link" : "this file"
     if (!window.confirm(`Permanently delete ${label} from your Vault?`)) return
-    setIsDeleting(true)
-    const toastId = toast.loading("Deleting file…")
-    try {
-      await deleteVaultItem(item.id)
-      toast.success(item.item_type === "link" ? "Link deleted" : "File deleted", { id: toastId })
-      onDelete()
-    } catch (e: any) {
-      toast.error(e.message || "Delete failed", { id: toastId })
-    } finally {
-      setIsDeleting(false)
-    }
+    onDelete(item)
   }
 
   const isLink = item.item_type === "link"
-  const isBusy = isViewing || isDownloading || isDeleting
+  const isBusy = isViewing || isDownloading
   const tags = item.tags ?? []
   const folderTrail = buildBreadcrumb(folders, item.folder_id)
   const pathString = folderTrail.length > 0
@@ -1801,27 +1811,92 @@ export default function VaultPage() {
   const toggleFolder = (id: string) => setSelectedFolderIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   const clearSelection = () => { setSelectedItemIds([]); setSelectedFolderIds([]) }
 
+  const queryClient = useQueryClient()
+
+  const handleDeleteItem = async (item: VaultItem) => {
+    // 1. Optimistic removal from cache so UI updates immediately
+    queryClient.setQueryData<VaultItem[]>(["vaultItems", currentFolderId], (old) =>
+      old ? old.filter((i) => i.id !== item.id) : []
+    )
+    if (currentFolderId !== null) {
+      queryClient.setQueryData<VaultItem[]>(["vaultItems", null], (old) =>
+        old ? old.filter((i) => i.id !== item.id) : []
+      )
+    }
+
+    const label = item.item_type === "link" ? "Link" : "File"
+    const toastId = toast.loading(`Deleting ${label.toLowerCase()}…`)
+    try {
+      await deleteVaultItem(item.id)
+      toast.success(`${label} deleted`, { id: toastId })
+      queryClient.invalidateQueries({ queryKey: ["vaultItems"] })
+    } catch (e: any) {
+      toast.error(e.message || `Failed to delete ${label.toLowerCase()}`, { id: toastId })
+      queryClient.invalidateQueries({ queryKey: ["vaultItems"] })
+    }
+  }
+
+  const handleDeleteFolder = async (folder: VaultFolder) => {
+    // 1. Optimistic removal from cache so UI updates immediately
+    queryClient.setQueryData<VaultFolder[]>(["vaultFolders"], (old) =>
+      old ? old.filter((f) => f.id !== folder.id) : []
+    )
+
+    const toastId = toast.loading("Deleting folder...")
+    try {
+      await deleteVaultFolder(folder.id)
+      toast.success("Folder deleted", { id: toastId })
+      queryClient.invalidateQueries({ queryKey: ["vaultFolders"] })
+      queryClient.invalidateQueries({ queryKey: ["vaultItems"] })
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete folder", { id: toastId })
+      queryClient.invalidateQueries({ queryKey: ["vaultFolders"] })
+      queryClient.invalidateQueries({ queryKey: ["vaultItems"] })
+    }
+  }
+
   const handleBulkDelete = async () => {
     if (selectedItemIds.length === 0 && selectedFolderIds.length === 0) return
+    const totalCount = selectedItemIds.length + selectedFolderIds.length
     const confirm = window.confirm(`Delete ${selectedItemIds.length} file(s) and ${selectedFolderIds.length} folder(s)?`)
     if (!confirm) return
 
-    const toastId = toast.loading("Deleting selected items...")
+    const itemIdsToDelete = [...selectedItemIds]
+    const folderIdsToDelete = [...selectedFolderIds]
+    clearSelection()
+
+    // 1. Optimistic removal from cache
+    if (itemIdsToDelete.length > 0) {
+      queryClient.setQueryData<VaultItem[]>(["vaultItems", currentFolderId], (old) =>
+        old ? old.filter((i) => !itemIdsToDelete.includes(i.id)) : []
+      )
+      if (currentFolderId !== null) {
+        queryClient.setQueryData<VaultItem[]>(["vaultItems", null], (old) =>
+          old ? old.filter((i) => !itemIdsToDelete.includes(i.id)) : []
+        )
+      }
+    }
+    if (folderIdsToDelete.length > 0) {
+      queryClient.setQueryData<VaultFolder[]>(["vaultFolders"], (old) =>
+        old ? old.filter((f) => !folderIdsToDelete.includes(f.id)) : []
+      )
+    }
+
+    const toastId = toast.loading(`Deleting ${totalCount} item(s)...`)
     try {
       await Promise.all([
-        ...selectedItemIds.map(id => deleteVaultItem(id)),
-        ...selectedFolderIds.map(id => deleteVaultFolder(id))
+        ...itemIdsToDelete.map(id => deleteVaultItem(id)),
+        ...folderIdsToDelete.map(id => deleteVaultFolder(id))
       ])
       toast.success("Deleted successfully", { id: toastId })
       queryClient.invalidateQueries({ queryKey: ["vaultItems"] })
       queryClient.invalidateQueries({ queryKey: ["vaultFolders"] })
-      clearSelection()
     } catch (e: any) {
       toast.error("Failed to delete some items", { id: toastId })
+      queryClient.invalidateQueries({ queryKey: ["vaultItems"] })
+      queryClient.invalidateQueries({ queryKey: ["vaultFolders"] })
     }
   }
-
-  const queryClient = useQueryClient()
 
   const sourceFor = (item: VaultItem): ShareSource => ({
     kind: "vault",
@@ -2299,7 +2374,7 @@ export default function VaultPage() {
                         }
                       }}
                       onMove={(f) => setMoveItem({ type: "folder", id: f.id })}
-                      onDelete={invalidateFolders}
+                      onDelete={handleDeleteFolder}
                       isSelected={selectedFolderIds.includes(folder.id)}
                       onToggle={toggleFolder}
                       selectionMode={selectedItemIds.length > 0 || selectedFolderIds.length > 0}
@@ -2330,7 +2405,7 @@ export default function VaultPage() {
                       key={`file-${item.id}`}
                       item={item}
                       folders={allFolders}
-                      onDelete={invalidateItems}
+                      onDelete={handleDeleteItem}
                       onEdit={(i) => setEditItem(i)}
                       onMove={(i) => setMoveItem({ type: "file", id: i.id })}
                       onShare={(i) => startShare([i])}

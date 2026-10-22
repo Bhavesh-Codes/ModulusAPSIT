@@ -89,17 +89,19 @@ export async function deleteVaultFolder(folderId: string) {
   if (fetchError || !folder) throw new Error("Folder not found or access denied")
 
   // Rule: deleting a folder moves its files and sub-folders to root, rather than cascading.
-  const { error: itemsUpdateError } = await supabase
-    .from("vault_items")
-    .update({ folder_id: null })
-    .eq("folder_id", folderId)
-  if (itemsUpdateError) throw new Error("Failed to move child items to root. Deletion aborted.")
-
-  const { error: foldersUpdateError } = await supabase
-    .from("folders")
-    .update({ parent_id: null })
-    .eq("parent_id", folderId)
-  if (foldersUpdateError) throw new Error("Failed to move sub-folders to root. Deletion aborted.")
+  // Run both updates in parallel to cut DB round-trip latency
+  const [itemsUpdateRes, foldersUpdateRes] = await Promise.all([
+    supabase
+      .from("vault_items")
+      .update({ folder_id: null })
+      .eq("folder_id", folderId),
+    supabase
+      .from("folders")
+      .update({ parent_id: null })
+      .eq("parent_id", folderId),
+  ])
+  if (itemsUpdateRes.error) throw new Error("Failed to move child items to root. Deletion aborted.")
+  if (foldersUpdateRes.error) throw new Error("Failed to move sub-folders to root. Deletion aborted.")
 
   const { error: deleteError } = await supabase.from("folders").delete().eq("id", folderId)
   if (deleteError) throw new Error("Failed to delete folder")
@@ -114,6 +116,7 @@ export async function deleteVaultItem(itemId: string) {
   const supabase = await createClient()
   const user = await requireUser(supabase)
 
+  // Single query: fetch vault item + linked file info
   const { data: vaultItem, error: fetchError } = await supabase
     .from("vault_items")
     .select("*, files(id, r2_object_key, size_bytes)")
@@ -126,25 +129,35 @@ export async function deleteVaultItem(itemId: string) {
   const fileRecord = vaultItem.files
 
   if (fileRecord?.r2_object_key) {
-    try {
-      await deleteFileFromR2(fileRecord.r2_object_key)
-    } catch (r2Error) {
-      console.error("Failed to delete file from R2:", r2Error)
-    }
+    // Run R2 deletion and DB file deletion in parallel — they are independent
+    const [, fileDeleteResult] = await Promise.all([
+      deleteFileFromR2(fileRecord.r2_object_key).catch((r2Error) => {
+        // Don't block on R2 errors — the DB record is what matters for consistency
+        console.error("Failed to delete file from R2:", r2Error)
+      }),
+      supabase.from("files").delete().eq("id", fileRecord.id),
+    ])
 
-    const { error: fileDeleteError } = await supabase.from("files").delete().eq("id", fileRecord.id)
-    if (fileDeleteError) throw new Error("Failed to delete file record")
+    if (fileDeleteResult.error) throw new Error("Failed to delete file record")
 
+    // Atomically decrement quota with a single UPDATE — no read needed, with fallback
     if (fileRecord.size_bytes) {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("storage_used_bytes")
-        .eq("id", user.id)
-        .single()
+      const { error: rpcError } = await supabase.rpc("decrement_storage", {
+        p_user_id: user.id,
+        p_bytes: fileRecord.size_bytes,
+      })
+      if (rpcError) {
+        // Fallback if RPC is not yet created in Supabase
+        const { data: userData } = await supabase
+          .from("users")
+          .select("storage_used_bytes")
+          .eq("id", user.id)
+          .single()
 
-      if (userData) {
-        const newStorage = Math.max((userData.storage_used_bytes || 0) - fileRecord.size_bytes, 0)
-        await supabase.from("users").update({ storage_used_bytes: newStorage }).eq("id", user.id)
+        if (userData) {
+          const newStorage = Math.max((userData.storage_used_bytes || 0) - fileRecord.size_bytes, 0)
+          await supabase.from("users").update({ storage_used_bytes: newStorage }).eq("id", user.id)
+        }
       }
     }
   } else {

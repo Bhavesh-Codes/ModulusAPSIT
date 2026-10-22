@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     }
 
     // Insert into vault_items and update storage quota in parallel
-    const [vaultItemResult, updateQuotaResult] = await Promise.all([
+    const [vaultItemResult, quotaRpcResult] = await Promise.all([
       admin
         .from('vault_items')
         .insert({
@@ -95,10 +95,10 @@ export async function POST(request: Request) {
         })
         .select()
         .single(),
-      admin
-        .from('users')
-        .update({ storage_used_bytes: currentUsed + file.size })
-        .eq('id', user.id)
+      admin.rpc("increment_storage", {
+        p_user_id: user.id,
+        p_bytes: file.size,
+      }),
     ])
 
     if (vaultItemResult.error) {
@@ -106,8 +106,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Vault linkage failed." }, { status: 500 })
     }
 
-    if (updateQuotaResult.error) {
-      console.error("Quota increment error:", updateQuotaResult.error)
+    if (quotaRpcResult.error) {
+      // Fallback if RPC is not yet created in Supabase
+      const { error: fallbackError } = await admin
+        .from('users')
+        .update({ storage_used_bytes: currentUsed + file.size })
+        .eq('id', user.id)
+      if (fallbackError) {
+        console.error("Quota increment fallback error:", fallbackError)
+      }
     }
 
     return NextResponse.json({
