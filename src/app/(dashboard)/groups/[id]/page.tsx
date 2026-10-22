@@ -25,7 +25,7 @@ import {
   ResourceFilters, applyFilters, emptyFilters, hasResourceFilter, type Filters,
 } from "@/components/groups/ResourceFilters"
 import { useSubjectDetail } from "@/components/groups/ClassificationFields"
-import { toRomanSemester, type CommunityResource } from "@/types/groups"
+import { toRomanSemester, type CommunityResource, type Subject } from "@/types/groups"
 import { useUiStore } from "@/lib/stores/uiStore"
 
 export default function GroupLibraryPage() {
@@ -69,11 +69,11 @@ export default function GroupLibraryPage() {
   const groupedBySubject = useMemo(() => {
     if (!selectedTeacher) return null
     const groups: {
-      subject: { id: string; name: string; code: string | null } | null
+      subject: Subject | null
       items: CommunityResource[]
     }[] = []
 
-    const subjectMap = new Map<string, { subject: any; items: CommunityResource[] }>()
+    const subjectMap = new Map<string, { subject: Subject; items: CommunityResource[] }>()
     const unsortedItems: CommunityResource[] = []
 
     for (const r of filtered) {
