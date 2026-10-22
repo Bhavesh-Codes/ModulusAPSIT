@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
-import { ArrowLeft, GitMerge, ListOrdered, Loader2, Pencil, Star, User } from "lucide-react"
+import { ArrowLeft, GitMerge, GraduationCap, Laptop, ListOrdered, Loader2, Pencil, Star, User } from "lucide-react"
 import { useCommunity, useCommunityResources } from "@/components/groups/useCommunityData"
 import { useSubjectDetail } from "@/components/groups/ClassificationFields"
 import { ResourceCard } from "@/components/groups/ResourceCard"
@@ -121,6 +121,8 @@ export default function SubjectPage() {
     <ResourceCard key={r.id} resource={r} viewerId={viewerId} canManage={canManage} onEdit={setEditing} />
   )
 
+  const isLab = subject.subject_type === "lab" || /lab|practical|workshop/i.test(subject.name)
+
   return (
     <div className="space-y-6 min-h-[70vh]">
       <div className="space-y-3">
@@ -129,32 +131,36 @@ export default function SubjectPage() {
         </Link>
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
           <div className="min-w-0">
-            <h2 className="font-heading font-extrabold text-[28px] leading-tight">{subject.name}</h2>
-            <div className="flex flex-wrap items-center gap-2 mt-2">
-              {subject.subject_type && (
-                <span className={`px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground font-mono text-[11px] font-bold ${
-                  subject.subject_type === "lab" ? "bg-[#00E5FF] text-foreground" : "bg-background text-foreground"
-                }`}>
-                  {subject.subject_type === "lab" ? "Lab" : "Theory"}
-                </span>
-              )}
-              {subject.code && (
-                <span className="px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[11px] font-bold">
-                  {subject.code}
-                </span>
-              )}
-              {subject.semester && (
-                <span className="px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[11px] font-bold">
-                  Sem {toRomanSemester(subject.semester)}
-                </span>
-              )}
-              {subject.scheme && (
-                <span className="px-2.5 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[11px] font-bold">
-                  {subject.scheme}
-                </span>
-              )}
+            <div className="flex items-start gap-3.5">
+              <div
+                className={`w-12 h-12 rounded-[12px] border-[2px] border-foreground flex items-center justify-center shadow-[2.5px_2.5px_0px_black] shrink-0 mt-0.5 ${
+                  isLab ? "bg-[#00E5FF] text-foreground" : "bg-[#7C3AED] text-white"
+                }`}
+                title={isLab ? "Laboratory Subject" : "Theory Subject"}
+              >
+                {isLab ? (
+                  <Laptop className="w-6 h-6 text-foreground" strokeWidth={2.4} />
+                ) : (
+                  <GraduationCap className="w-6 h-6 text-white" strokeWidth={2.4} />
+                )}
+              </div>
+              <div className="min-w-0">
+                <h2 className="font-heading font-extrabold text-[28px] leading-tight text-foreground">{subject.name}</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {subject.semester && (
+                    <span className="px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] text-foreground font-heading font-extrabold text-[12px] shadow-[2px_2px_0px_black] tracking-wide">
+                      Sem {toRomanSemester(subject.semester)}
+                    </span>
+                  )}
+                  {subject.scheme && (
+                    <span className="px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-card text-foreground font-mono font-extrabold text-[11px] shadow-[2px_2px_0px_black] uppercase tracking-wider">
+                      {subject.scheme}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2 mt-3">
+            <div className="flex flex-wrap gap-2 mt-3.5 sm:pl-[62px]">
               {canShare && (
                 <button type="button" onClick={() => setEditingModules(true)} className={btnSm}>
                   <ListOrdered className="w-3.5 h-3.5" /> Edit modules

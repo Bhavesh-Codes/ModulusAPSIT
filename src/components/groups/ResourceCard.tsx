@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useQueryClient } from "@tanstack/react-query"
 import {
-  Archive, BookOpen, Clock, Download, ExternalLink, Eye, Loader2, MoreVertical, Pencil, Pin, PinOff, PlayCircle,
+  Archive, BookOpen, Clock, Download, ExternalLink, Eye, GraduationCap, Laptop, Loader2, MoreVertical, Pencil, Pin, PinOff, PlayCircle,
   RotateCcw, Trash2, User,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -285,9 +285,12 @@ export function ResourceCard({
               href={`/groups/${resource.community_id}/subjects/${resource.subject.id}`}
               className="font-mono text-[11px] text-muted-foreground hover:text-foreground flex items-center gap-1 min-w-0 transition-colors"
             >
-              <BookOpen className="w-3 h-3 shrink-0" />
+              {resource.subject.subject_type === "lab" || /lab|practical|workshop/i.test(resource.subject.name) ? (
+                <Laptop className="w-3 h-3 text-[#00A3B5] shrink-0" />
+              ) : (
+                <GraduationCap className="w-3 h-3 text-[#7C3AED] shrink-0" />
+              )}
               <span className="truncate hover:underline">
-                {resource.subject.code ? `${resource.subject.code} · ` : ""}
                 {resource.subject.name}
                 {resource.module ? ` › Module ${resource.module.number}` : ""}
               </span>

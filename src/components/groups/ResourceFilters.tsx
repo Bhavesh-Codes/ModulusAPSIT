@@ -153,38 +153,38 @@ export function ResourceFilters({
           )}
         </div>
 
-        {/* Quick Type Filter on medium+ screens */}
-        {typeAvailable && (
-          <div className="hidden md:block w-36 shrink-0">
+        {/* Quick Semester Filter */}
+        {semesterAvailable && (
+          <div className="hidden sm:block w-32 md:w-36 shrink-0">
             <select
-              aria-label="Resource type"
-              value={filters.type}
-              onChange={(e) => onChange({ type: e.target.value })}
+              aria-label="Semester"
+              value={filters.semester}
+              onChange={(e) => onChange({ semester: e.target.value })}
               className={selectCls}
             >
-              <option value="">All types</option>
-              {types.map((t) => (
-                <option key={t.value} value={t.value}>
-                  {resourceTypeLabel(t.value)}
+              <option value="">All semesters</option>
+              {semesters.map((n) => (
+                <option key={n} value={n}>
+                  Sem {toRomanSemester(n)}
                 </option>
               ))}
             </select>
           </div>
         )}
 
-        {/* Quick Subject Filter on medium+ screens */}
-        {subjectAvailable && (
-          <div className="hidden lg:block w-40 shrink-0">
+        {/* Quick Scheme Filter */}
+        {schemeAvailable && (
+          <div className="hidden sm:block w-32 md:w-36 shrink-0">
             <select
-              aria-label="Subject"
-              value={filters.subjectId}
-              onChange={(e) => onChange({ subjectId: e.target.value, moduleId: "" })}
+              aria-label="Scheme"
+              value={filters.scheme}
+              onChange={(e) => onChange({ scheme: e.target.value })}
               className={selectCls}
             >
-              <option value="">All subjects</option>
-              {subjects!.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.code ? `${s.code} · ` : ""}{s.name}
+              <option value="">All schemes</option>
+              {schemes.map((s) => (
+                <option key={s} value={s}>
+                  {s}
                 </option>
               ))}
             </select>
@@ -229,9 +229,9 @@ export function ResourceFilters({
       {expanded && (
         <div id="resource-filters-more" className="pt-2.5 border-t-[1.5px] border-dashed border-foreground/30 space-y-2.5">
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
-            {/* Subject on mobile / tablet if hidden above */}
+            {/* Subject (moved down into expanded drawer) */}
             {subjectAvailable && (
-              <div className="lg:hidden">
+              <div className="col-span-2 sm:col-span-1">
                 <select
                   aria-label="Subject"
                   value={filters.subjectId}
@@ -241,16 +241,16 @@ export function ResourceFilters({
                   <option value="">All subjects</option>
                   {subjects!.map((s) => (
                     <option key={s.id} value={s.id}>
-                      {s.code ? `${s.code} · ` : ""}{s.name}
+                      {s.name}
                     </option>
                   ))}
                 </select>
               </div>
             )}
 
-            {/* Type on mobile if hidden above */}
+            {/* Type (moved down into expanded drawer) */}
             {typeAvailable && (
-              <div className="md:hidden">
+              <div>
                 <select
                   aria-label="Resource type"
                   value={filters.type}
@@ -285,15 +285,16 @@ export function ResourceFilters({
               </div>
             )}
 
+            {/* Semester on mobile if hidden on smaller screens */}
             {semesterAvailable && (
-              <div>
+              <div className="sm:hidden">
                 <select
                   aria-label="Semester"
                   value={filters.semester}
                   onChange={(e) => onChange({ semester: e.target.value })}
                   className={selectCls}
                 >
-                  <option value="">Any semester</option>
+                  <option value="">All semesters</option>
                   {semesters.map((n) => (
                     <option key={n} value={n}>
                       Sem {toRomanSemester(n)}
@@ -303,18 +304,19 @@ export function ResourceFilters({
               </div>
             )}
 
+            {/* Scheme on mobile if hidden on smaller screens */}
             {schemeAvailable && (
-              <div>
+              <div className="sm:hidden">
                 <select
                   aria-label="Scheme"
                   value={filters.scheme}
                   onChange={(e) => onChange({ scheme: e.target.value })}
                   className={selectCls}
                 >
-                  <option value="">Any scheme</option>
+                  <option value="">All schemes</option>
                   {schemes.map((s) => (
                     <option key={s} value={s}>
-                      Scheme {s}
+                      {s}
                     </option>
                   ))}
                 </select>

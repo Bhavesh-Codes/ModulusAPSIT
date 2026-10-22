@@ -3,7 +3,20 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useParams } from "next/navigation"
-import { BookOpen, FolderSync, HelpCircle, Layers, Loader2, Search, Clock, ArrowRight, User } from "lucide-react"
+import {
+  ArrowRight,
+  BookOpen,
+  Clock,
+  FileText,
+  FolderSync,
+  GraduationCap,
+  HelpCircle,
+  Layers,
+  Laptop,
+  Loader2,
+  Search,
+  User,
+} from "lucide-react"
 import { useCommunity, useCommunityResources, useCommunitySubjects } from "@/components/groups/useCommunityData"
 import { ResourceCard } from "@/components/groups/ResourceCard"
 import { EditShareDialog } from "@/components/groups/EditShareDialog"
@@ -195,48 +208,82 @@ export default function GroupLibraryPage() {
           ) : (
             <section aria-label="Subjects">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-                {gridSubjects.map((s) => (
-                  <Link
-                    key={s.id}
-                    href={`/groups/${id}/subjects/${s.id}`}
-                    className="group flex flex-col gap-3 bg-card border-[2px] border-foreground rounded-[1.5rem] p-5 shadow-[4px_4px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/40"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="w-12 h-12 rounded-[10px] bg-[#0057FF] border-[2px] border-foreground flex items-center justify-center shadow-[2px_2px_0px_black] shrink-0">
-                        <BookOpen className="w-6 h-6 text-white" />
+                {gridSubjects.map((s) => {
+                  const isLab = s.subject_type === "lab" || /lab|practical|workshop/i.test(s.name)
+                  return (
+                    <Link
+                      key={s.id}
+                      href={`/groups/${id}/subjects/${s.id}`}
+                      className="group flex flex-col justify-between bg-card border-[2px] border-foreground rounded-[1.25rem] p-5 shadow-[4px_4px_0px_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[1px_1px_0px_black] transition-all focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-foreground/40 min-h-[180px]"
+                    >
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div
+                            className={`w-12 h-12 rounded-[12px] border-[2px] border-foreground flex items-center justify-center shadow-[2.5px_2.5px_0px_black] shrink-0 transition-transform group-hover:scale-105 ${
+                              isLab ? "bg-[#00E5FF] text-foreground" : "bg-[#7C3AED] text-white"
+                            }`}
+                            title={isLab ? "Laboratory Subject" : "Theory Subject"}
+                          >
+                            {isLab ? (
+                              <Laptop className="w-6 h-6 text-foreground" strokeWidth={2.4} />
+                            ) : (
+                              <GraduationCap className="w-6 h-6 text-white" strokeWidth={2.4} />
+                            )}
+                          </div>
+                          <div className="flex flex-wrap items-center justify-end gap-1.5">
+                            {s.semester && (
+                              <span className="px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] text-foreground font-heading font-extrabold text-[12px] shadow-[2px_2px_0px_black] tracking-wide">
+                                Sem {toRomanSemester(s.semester)}
+                              </span>
+                            )}
+                            {s.scheme && (
+                              <span className="px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-card text-foreground font-mono font-extrabold text-[11px] shadow-[2px_2px_0px_black] uppercase tracking-wider">
+                                {s.scheme}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="min-w-0">
+                          <h3 className="font-heading font-extrabold text-[18px] sm:text-[19px] leading-snug line-clamp-2 text-foreground group-hover:text-[#7C3AED] transition-colors">
+                            {s.name}
+                          </h3>
+                        </div>
                       </div>
-                      <div className="flex flex-wrap justify-end gap-1.5">
-                        {s.subject_type && (
-                          <span className={`px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground font-mono text-[10px] font-bold ${
-                            s.subject_type === "lab" ? "bg-[#00E5FF] text-foreground" : "bg-background text-foreground"
-                          }`}>
-                            {s.subject_type === "lab" ? "Lab" : "Theory"}
-                          </span>
-                        )}
-                        {s.semester && (
-                          <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[10px] font-bold">
-                            Sem {toRomanSemester(s.semester)}
-                          </span>
-                        )}
-                        {s.scheme && (
-                          <span className="px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background font-mono text-[10px] font-bold">
-                            {s.scheme}
-                          </span>
-                        )}
+
+                      <div className="mt-4 pt-3.5 border-t-[2px] border-dashed border-foreground/30 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[9px] border-[2px] border-foreground shadow-[2px_2px_0px_black] ${
+                              s.resource_count > 0 ? "bg-[#FFD600]/25 text-foreground" : "bg-muted/30 text-muted-foreground"
+                            }`}
+                          >
+                            <FileText
+                              className={`w-3.5 h-3.5 ${s.resource_count > 0 ? "text-[#7C3AED]" : "text-muted-foreground"}`}
+                              strokeWidth={2.5}
+                            />
+                            <span className="font-heading font-extrabold text-[13px] text-foreground">
+                              {s.resource_count}
+                            </span>
+                            <span className="font-sans font-bold text-[11px] text-muted-foreground">
+                              {s.resource_count === 1 ? "resource" : "resources"}
+                            </span>
+                          </div>
+
+                          {s.module_count > 0 && (
+                            <span className="font-mono text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                              <Layers className="w-3.5 h-3.5" />
+                              {s.module_count} {s.module_count === 1 ? "module" : "modules"}
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="w-8 h-8 rounded-[9px] border-[1.5px] border-foreground bg-background group-hover:bg-[#FFD600] group-hover:translate-x-0.5 transition-all shadow-[1.5px_1.5px_0px_black] flex items-center justify-center shrink-0">
+                          <ArrowRight className="w-4 h-4 text-foreground" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="min-w-0">
-                      <h3 className="font-heading font-bold text-[18px] leading-snug line-clamp-2">{s.name}</h3>
-                      {s.code && <p className="font-mono text-[12px] text-muted-foreground mt-0.5">{s.code}</p>}
-                    </div>
-                    <div className="mt-auto flex items-center gap-4 font-mono text-[12px] text-muted-foreground pt-3 border-t-[2px] border-dashed border-foreground">
-                      <span className="flex items-center gap-1">
-                        <Layers className="w-3.5 h-3.5" /> {s.resource_count} resource{s.resource_count !== 1 ? "s" : ""}
-                      </span>
-                      <span>{s.module_count} module{s.module_count !== 1 ? "s" : ""}</span>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  )
+                })}
               </div>
             </section>
           )}
@@ -314,18 +361,21 @@ export default function GroupLibraryPage() {
                 <section key={subject?.id || "unsorted"} className="space-y-4">
                   <div className="flex items-center justify-between pb-2 border-b-[2px] border-foreground border-dashed">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-[8px] bg-[#0057FF] border-[2px] border-foreground flex items-center justify-center shadow-[2px_2px_0px_black]">
-                        <BookOpen className="w-4 h-4 text-white" />
+                      <div
+                        className={`w-8 h-8 rounded-[8px] border-[2px] border-foreground flex items-center justify-center shadow-[2px_2px_0px_black] shrink-0 ${
+                          subject?.subject_type === "lab" || /lab|practical|workshop/i.test(subject?.name || "")
+                            ? "bg-[#00E5FF] text-foreground"
+                            : "bg-[#7C3AED] text-white"
+                        }`}
+                      >
+                        {subject?.subject_type === "lab" || /lab|practical|workshop/i.test(subject?.name || "") ? (
+                          <Laptop className="w-4 h-4 text-foreground" strokeWidth={2.2} />
+                        ) : (
+                          <GraduationCap className="w-4 h-4 text-white" strokeWidth={2.2} />
+                        )}
                       </div>
                       <h3 className="font-heading font-bold text-[17px] text-foreground">
-                        {subject ? (
-                          <>
-                            {subject.code ? `${subject.code} · ` : ""}
-                            {subject.name}
-                          </>
-                        ) : (
-                          "Unsorted"
-                        )}
+                        {subject ? subject.name : "Unsorted"}
                       </h3>
                       <span className="font-mono text-[11px] font-bold px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-background">
                         {items.length} {items.length === 1 ? "note" : "notes"}
