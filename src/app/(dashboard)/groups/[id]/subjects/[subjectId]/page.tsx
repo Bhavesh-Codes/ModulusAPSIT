@@ -124,14 +124,14 @@ export default function SubjectPage() {
   const isLab = subject.subject_type === "lab" || /lab|practical|workshop/i.test(subject.name)
 
   return (
-    <div className="space-y-6 min-h-[70vh]">
-      <div className="space-y-3">
+    <div className="space-y-3.5 sm:space-y-4 min-h-[70vh]">
+      <div className="space-y-2">
         <Link href={`/groups/${id}`} className={`${btnSm} inline-flex`}>
           <ArrowLeft className="w-4 h-4" /> All subjects
         </Link>
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-3.5">
           <div className="min-w-0">
-            <div className="flex items-start gap-3.5">
+            <div className="flex items-start gap-3">
               <div
                 className={`w-12 h-12 rounded-[12px] border-[2px] border-foreground flex items-center justify-center shadow-[2.5px_2.5px_0px_black] shrink-0 mt-0.5 ${
                   isLab ? "bg-[#00E5FF] text-foreground" : "bg-[#7C3AED] text-white"
@@ -144,38 +144,58 @@ export default function SubjectPage() {
                   <GraduationCap className="w-6 h-6 text-white" strokeWidth={2.4} />
                 )}
               </div>
-              <div className="min-w-0">
-                <h2 className="font-heading font-extrabold text-[28px] leading-tight text-foreground">{subject.name}</h2>
-                <div className="flex flex-wrap items-center gap-2 mt-2">
+              <div className="min-w-0 flex-1">
+                <h2 className="font-heading font-extrabold text-[24px] sm:text-[28px] leading-tight text-foreground">
+                  {subject.name}
+                </h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                  {/* Non-clickable metadata tags (flat pill chips, subtle border, no 3D button shadow) */}
                   {subject.semester && (
-                    <span className="px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] text-foreground font-heading font-extrabold text-[12px] shadow-[2px_2px_0px_black] tracking-wide">
+                    <span className="px-2.5 py-0.5 rounded-full border border-foreground/30 bg-[#FFD600]/30 text-foreground font-heading font-bold text-[11px] tracking-wide select-none cursor-default pointer-events-none">
                       Sem {toRomanSemester(subject.semester)}
                     </span>
                   )}
                   {subject.scheme && (
-                    <span className="px-2.5 py-1 rounded-[8px] border-[2px] border-foreground bg-card text-foreground font-mono font-extrabold text-[11px] shadow-[2px_2px_0px_black] uppercase tracking-wider">
+                    <span className="px-2.5 py-0.5 rounded-full border border-foreground/25 bg-muted/80 text-foreground/80 font-mono font-medium text-[11px] uppercase tracking-wider select-none cursor-default pointer-events-none">
                       {subject.scheme}
                     </span>
                   )}
+
+                  {/* Separator between passive description tags and interactive buttons */}
+                  {(canShare || canEditSubject || canManage) && (
+                    <span className="h-4 w-[1px] bg-foreground/20 mx-0.5 hidden sm:inline-block" />
+                  )}
+
+                  {/* Interactive Action Buttons (rectangular, tactile 3D shadow, hover-yellow feedback) */}
+                  {canShare && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingModules(true)}
+                      className="h-7 px-2.5 rounded-[8px] border-[1.8px] border-foreground bg-card hover:bg-[#FFD600] text-foreground font-heading font-extrabold text-[12px] shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_black] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <ListOrdered className="w-3.5 h-3.5 text-foreground" strokeWidth={2.4} /> Edit modules
+                    </button>
+                  )}
+                  {canEditSubject && (
+                    <button
+                      type="button"
+                      onClick={() => setEditingSubject(true)}
+                      className="h-7 px-2.5 rounded-[8px] border-[1.8px] border-foreground bg-card hover:bg-[#FFD600] text-foreground font-heading font-extrabold text-[12px] shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_black] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <Pencil className="w-3.5 h-3.5 text-foreground" strokeWidth={2.4} /> Edit subject
+                    </button>
+                  )}
+                  {canManage && (
+                    <button
+                      type="button"
+                      onClick={() => setMerging(true)}
+                      className="h-7 px-2.5 rounded-[8px] border-[1.8px] border-foreground bg-card hover:bg-[#FFD600] text-foreground font-heading font-extrabold text-[12px] shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[1px_1px_0px_black] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <GitMerge className="w-3.5 h-3.5 text-foreground" strokeWidth={2.4} /> Merge into…
+                    </button>
+                  )}
                 </div>
               </div>
-            </div>
-            <div className="flex flex-wrap gap-2 mt-3.5 sm:pl-[62px]">
-              {canShare && (
-                <button type="button" onClick={() => setEditingModules(true)} className={btnSm}>
-                  <ListOrdered className="w-3.5 h-3.5" /> Edit modules
-                </button>
-              )}
-              {canEditSubject && (
-                <button type="button" onClick={() => setEditingSubject(true)} className={btnSm}>
-                  <Pencil className="w-3.5 h-3.5" /> Edit subject
-                </button>
-              )}
-              {canManage && (
-                <button type="button" onClick={() => setMerging(true)} className={btnSm}>
-                  <GitMerge className="w-3.5 h-3.5" /> Merge into…
-                </button>
-              )}
             </div>
           </div>
           {canShare && <ShareEntryButtons communityId={id} defaultSubject={subject} />}

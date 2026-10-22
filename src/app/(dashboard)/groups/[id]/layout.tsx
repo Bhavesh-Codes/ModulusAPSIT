@@ -280,29 +280,19 @@ function CommunitySidebar({ id }: { id: string }) {
     )
   }
 
-  // Desktop sidebar (fixed right panel)
+  // Desktop sidebar (sticky right panel inside flex layout)
   const desktopSidebar = (
     <aside
       style={{
-        position: "fixed",
-        top: "var(--topnav-height, 64px)",
-        right: 0,
         width,
-        height: "calc(100vh - var(--topnav-height, 64px))",
-        transition: "width 0.25s ease, top 0.3s ease, height 0.3s ease",
-        flexDirection: "column",
-        background: "var(--background)",
-        borderLeft: "2px solid var(--foreground)",
-        zIndex: 30,
-        overflow: "hidden",
+        transition: "width 0.25s ease",
       }}
-      className="hidden md:flex shadow-[-4px_0_10px_rgba(0,0,0,0.05)]"
+      className="hidden md:flex flex-col bg-background border-l-[2.5px] border-foreground shrink-0 sticky top-0 h-[calc(100vh-var(--topnav-height,64px))] z-30 overflow-hidden"
     >
       {/* Toggle button & Section header */}
       <div
-        className="shrink-0 flex items-center border-b-[2px] border-b-[var(--foreground)] bg-card shadow-sm"
+        className="shrink-0 flex items-center border-b-[2.5px] border-foreground bg-card h-[60px]"
         style={{
-          height: 64,
           justifyContent: communitySidebarOpen ? "space-between" : "center",
           padding: communitySidebarOpen ? "0 16px" : "0",
         }}
@@ -322,18 +312,17 @@ function CommunitySidebar({ id }: { id: string }) {
         <button
           onClick={toggleCommunitySidebar}
           title={communitySidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          className="flex items-center justify-center bg-card hover:bg-[#FFD600] border-[2px] border-foreground shadow-[3px_3px_0_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all rounded-[10px]"
-          style={{ width: 40, height: 40, minWidth: 40 }}
+          className="flex items-center justify-center bg-card hover:bg-[#FFD600] border-[1.8px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all rounded-[8px] w-8 h-8 shrink-0"
         >
           {communitySidebarOpen
-            ? <ChevronRight style={{ width: 20, height: 20, color: "var(--foreground)" }} />
-            : <ChevronLeft style={{ width: 20, height: 20, color: "var(--foreground)" }} />
+            ? <ChevronRight className="w-4 h-4 text-foreground" />
+            : <ChevronLeft className="w-4 h-4 text-foreground" />
           }
         </button>
       </div>
 
       {/* Faculty list */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col py-4 pb-12">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col py-3 pb-12">
         {renderFacultyList(!communitySidebarOpen)}
       </nav>
     </aside>
@@ -497,7 +486,7 @@ function CommunityHeader({
   })
 
   return (
-    <header className="w-full bg-[#FFD600] border-b-[2.5px] border-foreground shadow-[0_2.5px_0px_black] px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 sticky top-0 z-40 shrink-0 flex items-center justify-between gap-2 sm:gap-4">
+    <header className="w-full bg-[#FFD600] border-b-[2.5px] border-foreground px-3 sm:px-6 md:px-8 sticky top-0 z-30 shrink-0 flex items-center justify-between gap-2 sm:gap-4 h-[60px]">
       {/* Left side: Back button & Community Name */}
       <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
         <Link
@@ -669,37 +658,36 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
   const groupRoot = `/groups/${id}`
   const isSubPage = pathname !== groupRoot && !pathname.endsWith(`/groups/${id}`) && pathname !== `/modules/${id}` && !pathname.endsWith(`/modules/${id}`)
 
-  // Sidebar width for content area right-padding (desktop only).
-  const sidebarWidth = communitySidebarOpen ? SIDEBAR_OPEN_WIDTH : SIDEBAR_COLLAPSED_WIDTH
-
   return (
     <>
-      {/* Right-side App Sidebar */}
-      <CommunitySidebar id={id} />
+      <div className="min-h-screen flex flex-col">
+        {/* Main Content + Sidebar Row */}
+        <div className="flex-1 flex min-w-0 items-stretch">
+          {/* Main Column */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* Permanent Header Bar */}
+            <CommunityHeader
+              community={community}
+              id={id}
+              isSubPage={isSubPage}
+              isMember={isMember}
+              canManage={canManage}
+              canEditCommunity={canEditCommunity}
+              effectiveRole={effectiveRole}
+              onManageMembers={() => setIsMembersModalOpen(true)}
+              onMobileMenuOpen={() => setCommunitySidebarMobileOpen(true)}
+            />
 
-      {/* Page content — shifts left to not go under sidebar on desktop */}
-      <div
-        className="[padding-right:0] md:[padding-right:var(--sidebar-w)] transition-[padding-right] duration-[250ms] ease-in-out min-h-screen flex flex-col"
-        style={{ "--sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
-      >
-        {/* Permanent full-width Header Bar */}
-        <CommunityHeader
-          community={community}
-          id={id}
-          isSubPage={isSubPage}
-          isMember={isMember}
-          canManage={canManage}
-          canEditCommunity={canEditCommunity}
-          effectiveRole={effectiveRole}
-          onManageMembers={() => setIsMembersModalOpen(true)}
-          onMobileMenuOpen={() => setCommunitySidebarMobileOpen(true)}
-        />
-
-        <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-5 pb-32 space-y-6 flex-1">
-          {/* Page content */}
-          <div className="w-full">
-            {children}
+            <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-5 pb-32 space-y-6 flex-1">
+              {/* Page content */}
+              <div className="w-full">
+                {children}
+              </div>
+            </div>
           </div>
+
+          {/* Right-side App Sidebar (Desktop sticky / Mobile drawer) */}
+          <CommunitySidebar id={id} />
         </div>
       </div>
 
