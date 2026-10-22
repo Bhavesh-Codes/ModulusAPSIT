@@ -149,9 +149,9 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
       <DialogTrigger asChild>
         <button
           title="Group Settings"
-          className="w-12 h-12 rounded-[12px] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all flex items-center justify-center"
+          className="h-9 w-9 sm:h-10 sm:w-10 rounded-[0.6rem] border-[1.5px] border-foreground bg-card shadow-[2px_2px_0px_black] hover:bg-background hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center justify-center shrink-0"
         >
-          <Settings className="w-5 h-5 text-foreground" />
+          <Settings className="w-4 h-4 sm:w-5 sm:h-5 text-foreground" />
         </button>
       </DialogTrigger>
       
@@ -282,17 +282,17 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
                                  <div className="font-heading font-bold text-[14px] flex items-center gap-2">
                                      <span className="truncate">{member.name}</span>
                                      {normRole === "owner" && (
-                                       <span className="text-[10px] bg-[#FFD600] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                                       <span className="text-[10px] bg-[#B45309] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                          <Crown className="w-3 h-3" /> Owner
                                        </span>
                                      )}
                                      {normRole === "curator" && (
-                                       <span className="text-[10px] bg-[#0057FF] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                                       <span className="text-[10px] bg-[#334155] text-slate-100 border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                          <Shield className="w-3 h-3" /> Curator
                                        </span>
                                      )}
                                      {normRole === "member" && (
-                                       <span className="text-[10px] bg-[#00E5FF] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                                       <span className="text-[10px] bg-[#065F46] text-emerald-100 border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                          <User className="w-3 h-3" /> Member
                                        </span>
                                      )}
@@ -327,7 +327,7 @@ export function CommunitySettingsModal({ community }: CommunitySettingsModalProp
                                    }}
                                    disabled={isMutating}
                                    title="Appoint as Curator"
-                                   className="px-2.5 py-1 text-[11px] font-heading font-bold rounded-[8px] border-[1.5px] border-foreground bg-[#0057FF] text-white shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
+                                   className="px-2.5 py-1 text-[11px] font-heading font-bold rounded-[8px] border-[1.5px] border-foreground bg-[#334155] text-white shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
                                  >
                                    Appoint Curator
                                  </button>

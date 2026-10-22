@@ -414,15 +414,15 @@ function RoleBadge({ role, minimal }: { role: string | undefined; minimal?: bool
 
   if (norm === "owner") {
     Icon = Crown
-    tone = "bg-[#FFD600] text-foreground"
+    tone = "bg-[#B45309] text-white"
     label = "OWNER"
   } else if (norm === "curator") {
     Icon = Shield
-    tone = "bg-[#0057FF] text-white"
+    tone = "bg-[#334155] text-slate-100"
     label = "CURATOR"
   } else if (norm === "member") {
     Icon = User
-    tone = "bg-[#00E5FF] text-foreground"
+    tone = "bg-[#065F46] text-emerald-100"
     label = "MEMBER"
   }
 
@@ -497,70 +497,79 @@ function CommunityHeader({
   })
 
   return (
-    <header
-      className="flex items-center bg-[#FFD600] border-[3px] border-foreground rounded-[1.5rem] shadow-[6px_6px_0px_black] px-3 md:px-5 py-2 md:py-3 gap-2 md:gap-3 sticky top-4 z-40 shrink-0 transition-all duration-300 ease-in-out"
-    >
-      <Link
-        href={isSubPage ? `/groups/${id}` : `/groups`}
-        className="px-2 h-9 md:h-10 flex items-center justify-center gap-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[14px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all shrink-0"
-        title={isSubPage ? "Back to group home" : "Back to Groups"}
-      >
-        <ArrowLeft className="w-4 h-4" />
-        <span className="hidden md:inline">Back</span>
-      </Link>
-
-      {/* Title + meta — single row so the bar stays short on phones */}
-      <div className="flex items-center gap-2 flex-1 min-w-0 overflow-hidden">
-        <span className="font-heading font-extrabold text-foreground leading-none truncate text-[16px] md:text-[18px]">
-          {community.name}
-        </span>
-        <span
-          title={`${community.member_count ?? "—"} ${community.member_count === 1 ? "member" : "members"}`}
-          className="flex items-center gap-1 px-2 py-0.5 rounded-[100px] border-[1.5px] border-foreground bg-card shadow-[1.5px_1.5px_0px_black] font-mono text-[11px] font-bold text-foreground shrink-0"
+    <header className="w-full bg-[#FFD600] border-b-[2.5px] border-foreground shadow-[0_2.5px_0px_black] px-3 sm:px-6 md:px-8 py-2.5 sm:py-3 sticky top-0 z-40 shrink-0 flex items-center justify-between gap-2 sm:gap-4">
+      {/* Left side: Back button & Community Name */}
+      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+        <Link
+          href={isSubPage ? `/groups/${id}` : `/groups`}
+          className="h-9 px-2 sm:px-2.5 flex items-center justify-center gap-1.5 rounded-[0.6rem] border-[1.5px] border-foreground bg-card shadow-[2px_2px_0px_black] font-heading font-bold text-[13px] text-foreground hover:bg-background hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all shrink-0"
+          title={isSubPage ? "Back to group home" : "Back to Groups"}
         >
-          <Users className="w-3 h-3" />
-          {community.member_count ?? "—"}
-        </span>
-        <span className="md:hidden shrink-0 flex">
-          <RoleBadge role={effectiveRole} minimal />
-        </span>
-        <span className="hidden md:inline-flex shrink-0">
-          <RoleBadge role={effectiveRole} />
-        </span>
+          <ArrowLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Back</span>
+        </Link>
+
+        {/* Community Name: given priority, no longer truncated to 5 letters on mobile */}
+        <div className="flex items-center gap-2 min-w-0 flex-1">
+          <h1
+            className="font-heading font-extrabold text-[15px] sm:text-[18px] md:text-[20px] text-foreground leading-snug truncate"
+            title={community.name}
+          >
+            {community.name}
+          </h1>
+
+          {/* Understated role badge only on large desktop screens so it never crowds mobile */}
+          {effectiveRole && effectiveRole !== "viewer" && effectiveRole !== "member" && (
+            <span
+              className={`hidden xl:inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] border border-foreground/40 font-mono text-[9px] font-bold tracking-wider uppercase shrink-0 opacity-80 ${
+                effectiveRole === "owner" ? "bg-[#B45309] text-white" : "bg-[#334155] text-slate-100"
+              }`}
+            >
+              {effectiveRole === "owner" ? <Crown className="w-2.5 h-2.5" /> : <Shield className="w-2.5 h-2.5" />}
+              {effectiveRole}
+            </span>
+          )}
+        </div>
       </div>
 
-      <div className="flex items-center gap-2 shrink-0">
-        {canManage && (
-          <button
-            onClick={onManageMembers}
-            className="hidden md:flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
-          >
-            <Users className="w-4 h-4" />
-            Members
-          </button>
-        )}
+      {/* Right side: Action controls */}
+      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        {/* Members button (clean interactive button showing count & opening modal) */}
+        <button
+          type="button"
+          onClick={onManageMembers}
+          className="h-9 px-2.5 sm:px-3 flex items-center gap-1.5 rounded-[0.6rem] border-[1.5px] border-foreground bg-card shadow-[2px_2px_0px_black] hover:bg-background hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all font-heading font-bold text-[12px] text-foreground shrink-0"
+          title="View group members"
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>{community.member_count ?? 1}</span>
+          <span className="hidden sm:inline font-sans text-[11px] font-semibold text-muted-foreground">
+            {community.member_count === 1 ? "member" : "members"}
+          </span>
+        </button>
 
+        {/* Community Settings modal (available on both phone and desktop) */}
         {canEditCommunity && (
-          <div className="hidden md:block">
-            <CommunitySettingsModal community={community} />
-          </div>
+          <CommunitySettingsModal community={community} />
         )}
 
+        {/* Join button */}
         {!isMember && (
           <button
             onClick={() => joinMutation.mutate()}
             disabled={joinMutation.isPending}
-            className="flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-card shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] text-foreground hover:bg-background hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
+            className="h-9 px-3 rounded-[0.6rem] border-[1.5px] border-foreground bg-card shadow-[2px_2px_0px_black] font-heading font-bold text-[12px] text-foreground hover:bg-background hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1.5 shrink-0"
           >
             {joinMutation.isPending ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <UserPlus className="w-3 h-3" />
+              <UserPlus className="w-3.5 h-3.5" />
             )}
-            Join
+            <span>Join</span>
           </button>
         )}
-        
+
+        {/* Leave button */}
         {isMember && effectiveRole !== "owner" && (
           <button
             onClick={() => {
@@ -569,25 +578,26 @@ function CommunityHeader({
               }
             }}
             disabled={leaveMutation.isPending}
-            className="flex px-3 py-1.5 rounded-[0.75rem] border-[2px] border-foreground bg-[#FF3B30] text-white shadow-[3px_3px_0px_black] font-heading font-bold text-[12px] hover:translate-x-[3px] hover:translate-y-[3px] hover:shadow-none transition-all items-center gap-2"
+            title={`Leave ${community.name}`}
+            className="h-9 px-2.5 sm:px-3 rounded-[0.6rem] border-[1.5px] border-foreground bg-[#FF3B30] text-white shadow-[2px_2px_0px_black] font-heading font-bold text-[12px] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all flex items-center gap-1.5 shrink-0"
           >
             {leaveMutation.isPending ? (
-              <Loader2 className="w-3 h-3 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <UserMinus className="w-3 h-3" />
+              <UserMinus className="w-3.5 h-3.5" />
             )}
-            Leave
+            <span className="hidden sm:inline">Leave</span>
           </button>
         )}
 
+        {/* Faculty Notes button on mobile */}
         <button
           onClick={onMobileMenuOpen}
-          className="flex items-center justify-center bg-[#FFD600] hover:bg-[#f0cc00] border-[2px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all rounded-[8px] md:hidden shrink-0"
-          style={{ width: 36, height: 36 }}
+          className="w-9 h-9 flex items-center justify-center bg-card hover:bg-background border-[1.5px] border-foreground shadow-[2px_2px_0_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all rounded-[0.6rem] md:hidden shrink-0"
           title="Faculty Notes"
           aria-label="Faculty Notes"
         >
-          <GraduationCap style={{ width: 18, height: 18, color: "var(--foreground)" }} />
+          <GraduationCap className="w-4 h-4 text-foreground" />
         </button>
       </div>
     </header>
@@ -669,23 +679,23 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
 
       {/* Page content — shifts left to not go under sidebar on desktop */}
       <div
-        className="[padding-right:0] md:[padding-right:var(--sidebar-w)] transition-[padding-right] duration-[250ms] ease-in-out"
+        className="[padding-right:0] md:[padding-right:var(--sidebar-w)] transition-[padding-right] duration-[250ms] ease-in-out min-h-screen flex flex-col"
         style={{ "--sidebar-w": `${sidebarWidth}px` } as React.CSSProperties}
       >
-        <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 pt-4 pb-32 space-y-6">
-          {/* Module header */}
-          <CommunityHeader
-            community={community}
-            id={id}
-            isSubPage={isSubPage}
-            isMember={isMember}
-            canManage={canManage}
-            canEditCommunity={canEditCommunity}
-            effectiveRole={effectiveRole}
-            onManageMembers={() => setIsMembersModalOpen(true)}
-            onMobileMenuOpen={() => setCommunitySidebarMobileOpen(true)}
-          />
+        {/* Permanent full-width Header Bar */}
+        <CommunityHeader
+          community={community}
+          id={id}
+          isSubPage={isSubPage}
+          isMember={isMember}
+          canManage={canManage}
+          canEditCommunity={canEditCommunity}
+          effectiveRole={effectiveRole}
+          onManageMembers={() => setIsMembersModalOpen(true)}
+          onMobileMenuOpen={() => setCommunitySidebarMobileOpen(true)}
+        />
 
+        <div className="w-full max-w-[1400px] mx-auto px-4 md:px-8 py-5 pb-32 space-y-6 flex-1">
           {/* Page content */}
           <div className="w-full">
             {children}
@@ -693,18 +703,16 @@ export default function CommunityLayout({ children }: { children: React.ReactNod
         </div>
       </div>
 
-      {/* Manage members modal */}
-      {canManage && (
-        <ManageMembersModal
-          isOpen={isMembersModalOpen}
-          onClose={() => setIsMembersModalOpen(false)}
-          communityId={id}
-          canAppoint={canEditCommunity}
-          currentUserId={viewer.userId}
-          isOwnerOrAdmin={canEditCommunity}
-          isCurator={effectiveRole === "curator"}
-        />
-      )}
+      {/* Member roster modal accessible to all members */}
+      <ManageMembersModal
+        isOpen={isMembersModalOpen}
+        onClose={() => setIsMembersModalOpen(false)}
+        communityId={id}
+        canAppoint={canEditCommunity}
+        currentUserId={viewer.userId}
+        isOwnerOrAdmin={canEditCommunity}
+        isCurator={effectiveRole === "curator"}
+      />
     </>
   )
 }
@@ -835,17 +843,17 @@ function ManageMembersModal({
                               {m.name || "Unknown User"}
                             </span>
                             {normRole === "owner" && (
-                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#FFD600] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#B45309] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                 <Crown className="w-3 h-3" /> Owner
                               </span>
                             )}
                             {normRole === "curator" && (
-                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#0057FF] text-white border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#334155] text-slate-100 border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                 <Shield className="w-3 h-3" /> Curator
                               </span>
                             )}
                             {normRole === "member" && (
-                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#00E5FF] text-foreground border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
+                              <span className="shrink-0 whitespace-nowrap text-[10px] bg-[#065F46] text-emerald-100 border-[1.5px] border-foreground px-2 py-0.5 rounded-[100px] font-bold tracking-wider uppercase inline-flex items-center gap-1 shadow-[1px_1px_0px_black]">
                                 <User className="w-3 h-3" /> Member
                               </span>
                             )}
@@ -880,7 +888,7 @@ function ManageMembersModal({
                                 }
                               }}
                               title="Appoint as Curator"
-                              className="px-2.5 py-1 text-[11px] font-heading font-bold rounded-[8px] border-[1.5px] border-foreground bg-[#0057FF] text-white shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
+                              className="px-2.5 py-1 text-[11px] font-heading font-bold rounded-[8px] border-[1.5px] border-foreground bg-[#334155] text-white shadow-[2px_2px_0px_black] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-50"
                             >
                               Appoint Curator
                             </button>
