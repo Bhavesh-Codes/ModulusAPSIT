@@ -23,6 +23,7 @@ import {
 import { ClassificationFields, type Classification } from "./ClassificationFields"
 import { TagInput } from "./TagInput"
 import { btnPrimary, btnSecondary, dialogCls, inputCls, labelCls, selectCls } from "./ui"
+import { getFileIcon } from "./resourceIcons"
 
 export type ShareSource =
   | { kind: "vault"; vaultItemId: string; name: string }
@@ -43,7 +44,7 @@ interface CommunityOption {
   membership: { role: string } | null
 }
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024
+const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4 MB limit
 const LAST_KEY = "modulus:last-share"
 
 function makeEntries(sources: ShareSource[]): Entry[] {
@@ -94,6 +95,14 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
   const [conflictState, setConflictState] = useState<{ key: string; list: ShareConflict[] } | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const prefilled = useRef(!!defaultSubject)
+
+  // ── warn if any selected file exceeds 4MB ─────────────────────────────────
+  useEffect(() => {
+    const oversized = sources.filter((s) => s.kind === "file" && s.file.size > MAX_FILE_SIZE)
+    if (oversized.length > 0) {
+      toast.error(`File too large! "${oversized[0].name}" exceeds 4MB. Please upload files under 4MB.`)
+    }
+  }, [sources])
 
   // ── hash new files in the browser ─────────────────────────────────────────
   useEffect(() => {
@@ -275,12 +284,31 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
         if (e.source.kind === "vault") {
           vaultItemId = e.source.vaultItemId
         } else if (e.source.kind === "file") {
+          if (e.source.file.size > MAX_FILE_SIZE) {
+            throw new Error(`"${e.source.name}" is too large! Maximum file limit is under 4MB.`)
+          }
           const formData = new FormData()
-          formData.append("file", e.source.file, e.source.name)
+          const finalName = e.title.trim() || e.source.name
+          formData.append("file", e.source.file, finalName)
+          formData.append("filename", finalName)
           if (e.hash) formData.append("content_hash", e.hash)
           const res = await fetch("/api/vault/upload", { method: "POST", body: formData })
+          if (!res.ok) {
+            let errMsg = `Upload of ${e.source.name} failed`
+            try {
+              const errJson = await res.json()
+              errMsg = errJson.error || errMsg
+            } catch {
+              const text = await res.text().catch(() => "")
+              if (res.status === 413 || text.includes("Request Entity Too Large")) {
+                errMsg = `File "${e.source.name}" is too large! Maximum file limit is under 4MB.`
+              } else if (text) {
+                errMsg = text.slice(0, 150)
+              }
+            }
+            throw new Error(errMsg)
+          }
           const json = await res.json()
-          if (!res.ok) throw new Error(json.error || `Upload of ${e.source.name} failed`)
           vaultItemId = json.vaultItem.id
           current[i] = { ...e, source: { kind: "vault", vaultItemId, name: e.source.name } }
         } else {
@@ -350,27 +378,41 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
     <Dialog open={open} onOpenChange={(o) => !o && !submitting && onClose()}>
       <DialogContent className={`${dialogCls} w-full sm:max-w-2xl max-w-[calc(100vw-2rem)]`}>
         <DialogHeader>
-          <DialogTitle className="font-heading font-extrabold text-[22px] text-foreground flex items-center gap-2">
-            <div className="w-8 h-8 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] flex items-center justify-center shadow-[2px_2px_0px_black]">
-              <Share2 className="w-4 h-4 text-foreground" />
+          <DialogTitle className="font-heading font-extrabold text-[22px] text-foreground flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] flex items-center justify-center shadow-[2px_2px_0px_black]">
+                <Share2 className="w-4 h-4 text-foreground" />
+              </div>
+              <span>Share to group</span>
             </div>
-            Share to group
+            <span className="text-[12px] font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-full border border-foreground/20">
+              Limit: under 4MB
+            </span>
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6 mt-2">
           {/* Items */}
           <div className="space-y-2">
-            <Label className={labelCls}>
-              {entries.length === 1 ? "Title" : `Titles (${entries.length} items)`} <span className="text-[#FF3B30]">*</span>
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label className={labelCls}>
+                {entries.length === 1 ? "Title" : `Titles (${entries.length} items)`} <span className="text-[#FF3B30]">*</span>
+              </Label>
+              <span className="font-mono text-[11px] text-muted-foreground font-semibold">Max 4MB per file</span>
+            </div>
             <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
               {entries.map((e) => {
                 const tooBig = e.source.kind === "file" && e.source.file.size > MAX_FILE_SIZE
                 return (
                   <div key={e.key} className="flex items-center gap-2">
                     <div className="w-8 h-8 shrink-0 rounded-[8px] border-[1.5px] border-foreground bg-card flex items-center justify-center">
-                      {e.source.kind === "link" ? <Link2 className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
+                      {e.source.kind === "link" ? (
+                        <Link2 className="w-4 h-4 text-[#0057FF]" />
+                      ) : e.source.kind === "file" ? (
+                        getFileIcon(e.source.file.type, "w-4 h-4", e.source.name)
+                      ) : (
+                        getFileIcon("", "w-4 h-4", e.source.name)
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <Input
@@ -382,9 +424,9 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
                         className={`${inputCls} h-9`}
                       />
                       {e.source.kind === "file" && (
-                        <p className={`font-mono text-[10px] mt-0.5 ${tooBig ? "text-[#FF3B30]" : "text-muted-foreground"}`}>
+                        <p className={`font-mono text-[10px] mt-0.5 ${tooBig ? "text-[#FF3B30] font-bold" : "text-muted-foreground"}`}>
                           {formatBytes(e.source.file.size)}
-                          {tooBig ? " — over the 20 MB limit" : ""}
+                          {tooBig ? " — exceeds 4MB limit (must be under 4MB)" : " (under 4MB limit)"}
                         </p>
                       )}
                     </div>

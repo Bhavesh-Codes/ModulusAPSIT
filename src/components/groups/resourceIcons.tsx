@@ -2,56 +2,72 @@ import {
   Archive, File, FileCode, FileText, Image as ImageIcon, Link2, Music, PlayCircle, Video,
 } from "lucide-react"
 
-export function PptLogo({ className = "w-8 h-8" }: { className?: string }) {
+export function PptLogo({ className = "w-8 h-8", color = "#F97316" }: { className?: string; color?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="26" height="26" rx="5" fill="#D24726" />
-      <path d="M3 8C3 5.23858 5.23858 3 8 3H24C26.7614 3 29 5.23858 29 8V9H3V8Z" fill="#B33A1E" opacity="0.6" />
-      <path
-        d="M10.5 9.5H16C18.2 9.5 19.8 11.1 19.8 13.3C19.8 15.5 18.2 17.1 16 17.1H13.2V22.5H10.5V9.5ZM13.2 14.6H15.7C16.5 14.6 17.1 14 17.1 13.3C17.1 12.6 16.5 12 15.7 12H13.2V14.6Z"
-        fill="white"
-      />
-      <rect x="18" y="18" width="7" height="5" rx="1" fill="#FFE082" />
-      <rect x="19" y="19" width="3" height="3" rx="0.5" fill="#D24726" />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="-64 0 512 512"
+      className={className}
+      fill={color}
+      aria-label="PowerPoint presentation"
+    >
+      <path d="M0 64C0 28.7 28.7 0 64 0L213.5 0c17 0 33.3 6.7 45.3 18.7L365.3 125.3c12 12 18.7 28.3 18.7 45.3L384 448c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm208-5.5l0 93.5c0 13.3 10.7 24 24 24L325.5 176 208 58.5zM152 256c-13.3 0-24 10.7-24 24l0 144c0 13.3 10.7 24 24 24s24-10.7 24-24l0-24 24 0c39.8 0 72-32.2 72-72s-32.2-72-72-72l-48 0zm48 96l-24 0 0-48 24 0c13.3 0 24 10.7 24 24s-10.7 24-24 24z" />
     </svg>
   )
 }
 
-export function WordLogo({ className = "w-8 h-8" }: { className?: string }) {
+export function WordLogo({ className = "w-8 h-8", color = "#2563EB" }: { className?: string; color?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="26" height="26" rx="5" fill="#2B579A" />
-      <path d="M3 8C3 5.23858 5.23858 3 8 3H24C26.7614 3 29 5.23858 29 8V9H3V8Z" fill="#1E3E6D" opacity="0.6" />
-      <path
-        d="M9 10.5H11.5L13.2 18.2L15 10.5H17L18.8 18.2L20.5 10.5H23L20.5 22H18L16 14.5L14 22H11.5L9 10.5Z"
-        fill="white"
-      />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="-2 0 16 16"
+      className={className}
+      fill={color}
+      aria-label="Word document"
+    >
+      <path d="M1.5 14V2c0 -0.275 0.225 -0.5 0.5 -0.5h5v2.5c0 0.553125 0.446875 1 1 1h2.5v9c0 0.275 -0.225 0.5 -0.5 0.5H2c-0.275 0 -0.5 -0.225 -0.5 -0.5zM2 0C0.896875 0 0 0.896875 0 2v12c0 1.103125 0.896875 2 2 2h8c1.103125 0 2 -0.896875 2 -2V4.828125c0 -0.53125 -0.209375 -1.040625 -0.584375 -1.415625l-2.83125 -2.828125C8.209375 0.209375 7.703125 0 7.171875 0H2zm1.71875 7.534375c-0.11875 -0.396875 -0.5375 -0.621875 -0.934375 -0.503125S2.1625 7.56875 2.28125 7.965625l1.5 5c0.09375 0.31875 0.3875 0.534375 0.71875 0.534375s0.621875 -0.21875 0.71875 -0.534375l0.78125 -2.60625 0.78125 2.60625c0.09375 0.31875 0.3875 0.534375 0.71875 0.534375s0.621875 -0.21875 0.71875 -0.534375l1.5 -5c0.11875 -0.396875 -0.10625 -0.815625 -0.503125 -0.934375s-0.815625 0.10625 -0.934375 0.503125l-0.78125 2.60625 -0.78125 -2.60625c-0.09375 -0.31875 -0.3875 -0.534375 -0.71875 -0.534375s-0.621875 0.21875 -0.71875 0.534375l-0.78125 2.60625 -0.78125 -2.60625z" />
     </svg>
   )
 }
 
-export function ExcelLogo({ className = "w-8 h-8" }: { className?: string }) {
+export function ExcelLogo({ className = "w-8 h-8", color = "#16A34A" }: { className?: string; color?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="26" height="26" rx="5" fill="#217346" />
-      <path d="M3 8C3 5.23858 5.23858 3 8 3H24C26.7614 3 29 5.23858 29 8V9H3V8Z" fill="#164E30" opacity="0.6" />
-      <path
-        d="M11 10.5H14L16 14.5L18 10.5H21L17.5 16.2L21 22H18L16 18L14 22H11L14.5 16.2L11 10.5Z"
-        fill="white"
-      />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="-64 0 512 512"
+      className={className}
+      fill={color}
+      aria-label="Excel spreadsheet"
+    >
+      <path d="M0 64C0 28.7 28.7 0 64 0L213.5 0c17 0 33.3 6.7 45.3 18.7L365.3 125.3c12 12 18.7 28.3 18.7 45.3L384 448c0 35.3-28.7 64-64 64L64 512c-35.3 0-64-28.7-64-64L0 64zm208-5.5l0 93.5c0 13.3 10.7 24 24 24L325.5 176 208 58.5zM164 266.7c-7.4-11-22.3-14-33.3-6.7s-14 22.3-6.7 33.3L163.2 352 124 410.7c-7.4 11-4.4 25.9 6.7 33.3s25.9 4.4 33.3-6.7l28-42 28 42c7.4 11 22.3 14 33.3 6.7s14-22.3 6.7-33.3L220.8 352 260 293.3c7.4-11 4.4-25.9-6.7-33.3s-25.9-4.4-33.3 6.7l-28 42-28-42z" />
     </svg>
   )
 }
 
-export function PdfLogo({ className = "w-8 h-8" }: { className?: string }) {
+export function PdfLogo({ className = "w-8 h-8", color = "#E11D48" }: { className?: string; color?: string }) {
   return (
-    <svg viewBox="0 0 32 32" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="3" y="3" width="26" height="26" rx="5" fill="#EA4335" />
-      <path d="M3 8C3 5.23858 5.23858 3 8 3H24C26.7614 3 29 5.23858 29 8V9H3V8Z" fill="#C5221F" opacity="0.6" />
-      <path
-        d="M8.5 13H11C12 13 12.8 13.8 12.8 14.8C12.8 15.8 12 16.6 11 16.6H9.7V19H8.5V13ZM9.7 15.5H10.8C11.3 15.5 11.6 15.2 11.6 14.8C11.6 14.4 11.3 14.1 10.8 14.1H9.7V15.5ZM14 13H16.2C17.7 13 18.8 14.2 18.8 16C18.8 17.8 17.7 19 16.2 19H14V13ZM15.2 17.9H16.1C17 17.9 17.6 17.1 17.6 16C17.6 14.9 17 14.1 16.1 14.1H15.2V17.9ZM20.2 13H24V14.1H21.4V15.5H23.5V16.6H21.4V19H20.2V13Z"
-        fill="white"
-      />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 16 16"
+      className={className}
+      fill={color}
+      aria-label="PDF document"
+    >
+      <path d="m2 14.5 1.5 0 0 1.5 -1.5 0c-1.103125 0 -2 -0.896875 -2 -2L0 2C0 0.896875 0.896875 0 2 0l5.171875 0c0.53125 0 1.040625 0.209375 1.415625 0.584375l2.828125 2.828125c0.375 0.375 0.584375 0.884375 0.584375 1.415625l0 4.671875 -1.5 0 0 -4.5 -2.5 0c-0.553125 0 -1 -0.446875 -1 -1l0 -2.5 -5 0c-0.275 0 -0.5 0.225 -0.5 0.5l0 12c0 0.275 0.225 0.5 0.5 0.5zm3.5 -3.5 1 0c0.965625 0 1.75 0.784375 1.75 1.75s-0.784375 1.75 -1.75 1.75l-0.5 0 0 1c0 0.275 -0.225 0.5 -0.5 0.5s-0.5 -0.225 -0.5 -0.5l0 -1.5 0 -2.5c0 -0.275 0.225 -0.5 0.5 -0.5zm1 2.5c0.415625 0 0.75 -0.334375 0.75 -0.75s-0.334375 -0.75 -0.75 -0.75l-0.5 0 0 1.5 0.5 0zm3 -2.5 1 0c0.828125 0 1.5 0.671875 1.5 1.5l0 2c0 0.828125 -0.671875 1.5 -1.5 1.5l-1 0c-0.275 0 -0.5 -0.225 -0.5 -0.5l0 -4c0 -0.275 0.225 -0.5 0.5 -0.5zm1 4c0.275 0 0.5 -0.225 0.5 -0.5l0 -2c0 -0.275 -0.225 -0.5 -0.5 -0.5l-0.5 0 0 3 0.5 0zm2.5 -3.5c0 -0.275 0.225 -0.5 0.5 -0.5l1.5 0c0.275 0 0.5 0.225 0.5 0.5s-0.225 0.5 -0.5 0.5l-1 0 0 1 1 0c0.275 0 0.5 0.225 0.5 0.5s-0.225 0.5 -0.5 0.5l-1 0 0 1.5c0 0.275 -0.225 0.5 -0.5 0.5s-0.5 -0.225 -0.5 -0.5l0 -2 0 -2z" />
+    </svg>
+  )
+}
+
+export function FileLinesLogo({ className = "w-8 h-8" }: { className?: string }) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="-2 0 16 16"
+      className={className}
+      fill="#64748B"
+      aria-label="Document file"
+    >
+      <path d="M2 14.5c-0.275 0 -0.5 -0.225 -0.5 -0.5V2c0 -0.275 0.225 -0.5 0.5 -0.5h5v2.5c0 0.553125 0.446875 1 1 1h2.5v9c0 0.275 -0.225 0.5 -0.5 0.5H2zM2 0C0.896875 0 0 0.896875 0 2v12c0 1.103125 0.896875 2 2 2h8c1.103125 0 2 -0.896875 2 -2V4.828125c0 -0.53125 -0.209375 -1.040625 -0.584375 -1.415625l-2.83125 -2.828125C8.209375 0.209375 7.703125 0 7.171875 0H2zm1.75 8c-0.415625 0 -0.75 0.334375 -0.75 0.75s0.334375 0.75 0.75 0.75h4.5c0.415625 0 0.75 -0.334375 0.75 -0.75s-0.334375 -0.75 -0.75 -0.75H3.75zm0 3c-0.415625 0 -0.75 0.334375 -0.75 0.75s0.334375 0.75 0.75 0.75h4.5c0.415625 0 0.75 -0.334375 0.75 -0.75s-0.334375 -0.75 -0.75 -0.75H3.75z" />
     </svg>
   )
 }
@@ -164,7 +180,7 @@ export function getFileIcon(
   if (m.includes("json") || m.includes("javascript") || m.includes("html") || /\.(json|js|jsx|ts|tsx|html|css|py|java|c|cpp)$/i.test(f))
     return <FileCode className={`${size} text-[#4285F4]`} />
 
-  return <File className={`${size} text-muted-foreground`} />
+  return <FileLinesLogo className={size} />
 }
 
 export function getLinkIcon(url: string, size = "w-8 h-8") {

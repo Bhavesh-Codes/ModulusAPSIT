@@ -109,3 +109,36 @@ export async function getSignedUrlForR2Download(
   const command = new GetObjectCommand(commandInput);
   return await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 }
+
+export function resolveMimeType(filename: string, fallback?: string | null): string {
+  const ext = filename.split(".").pop()?.toLowerCase() || "";
+  const map: Record<string, string> = {
+    pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    ppt: "application/vnd.ms-powerpoint",
+    pps: "application/vnd.ms-powerpoint",
+    ppsx: "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+    odp: "application/vnd.oasis.opendocument.presentation",
+    pdf: "application/pdf",
+    docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    doc: "application/msword",
+    xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    xls: "application/vnd.ms-excel",
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    webp: "image/webp",
+    gif: "image/gif",
+    svg: "image/svg+xml",
+    txt: "text/plain",
+    mp4: "video/mp4",
+    zip: "application/zip",
+  };
+
+  if (ext && map[ext]) {
+    return map[ext];
+  }
+  if (fallback && fallback !== "application/octet-stream") {
+    return fallback;
+  }
+  return "application/octet-stream";
+}

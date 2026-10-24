@@ -2,11 +2,14 @@
 
 import { useCallback, useRef, useState } from "react"
 import { FolderSync, Link2, Upload } from "lucide-react"
+import { toast } from "sonner"
 import { useDragAndDrop } from "@/hooks/useDragAndDrop"
 import type { Subject } from "@/types/groups"
 import { AddLinkDialog } from "./AddLinkDialog"
 import { ShareDialog, type ShareSource } from "./ShareDialog"
 import { VaultPickerDialog } from "./VaultPickerDialog"
+
+const MAX_FILE_SIZE = 4 * 1024 * 1024 // 4 MB limit
 
 // Upload / Add link / Share from my vault. All three end in the same ShareDialog.
 export function ShareEntryButtons({
@@ -28,7 +31,13 @@ export function ShareEntryButtons({
   }, [])
 
   const fromFiles = useCallback(
-    (files: File[]) => startShare(files.map((file) => ({ kind: "file", file, name: file.name }))),
+    (files: File[]) => {
+      const oversized = files.filter((f) => f.size > MAX_FILE_SIZE)
+      if (oversized.length > 0) {
+        toast.error(`File too large! "${oversized[0].name}" exceeds 4MB. Modulus accepts files under 4MB.`)
+      }
+      startShare(files.map((file) => ({ kind: "file", file, name: file.name })))
+    },
     [startShare]
   )
 
@@ -49,10 +58,11 @@ export function ShareEntryButtons({
         <button
           type="button"
           onClick={() => fileInput.current?.click()}
+          title="Upload file (Limit: under 4MB)"
           className="px-5 py-2.5 rounded-[1rem] border-[3px] border-foreground bg-card shadow-[4px_4px_0px_black] hover:translate-x-[4px] hover:translate-y-[4px] hover:shadow-none transition-all font-heading font-bold text-[14px] text-foreground flex items-center gap-2 justify-center"
         >
           <Upload className="w-4 h-4" />
-          <span className="hidden sm:inline">Upload</span>
+          <span className="hidden sm:inline">Upload (under 4MB)</span>
         </button>
         <button
           type="button"

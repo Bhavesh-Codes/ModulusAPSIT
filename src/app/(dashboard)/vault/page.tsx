@@ -299,7 +299,7 @@ type UploadItem = {
   hashPromise?: Promise<string | null>;
 }
 
-const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_FILE_SIZE = 4 * 1024 * 1024; // 4 MB limit
 
 function UploadModal({
   isOpen,
@@ -338,7 +338,12 @@ function UploadModal({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const newItems = Array.from(e.target.files).map(f => ({
+      const selected = Array.from(e.target.files)
+      const oversized = selected.filter(f => f.size > MAX_FILE_SIZE)
+      if (oversized.length > 0) {
+        toast.error(`File too large! "${oversized[0].name}" exceeds 4MB. Modulus accepts files under 4MB.`)
+      }
+      const newItems = selected.map(f => ({
         id: Math.random().toString(36).substring(7),
         file: f,
         customName: f.name,
@@ -359,6 +364,11 @@ function UploadModal({
   }
 
   const handleSubmit = async () => {
+    const oversized = items.filter(i => i.isTooLarge)
+    if (oversized.length > 0) {
+      toast.error(`Cannot upload: "${oversized[0].customName || oversized[0].file.name}" exceeds the 4MB limit. Please remove files over 4MB.`)
+      return
+    }
     const validItems = items.filter(i => !i.isTooLarge)
     if (validItems.length === 0) return
     setIsUploading(true)
@@ -428,8 +438,19 @@ function UploadModal({
 
           const res = await fetch("/api/vault/upload", { method: "POST", body: formData })
           if (!res.ok) {
-            const data = await res.json().catch(() => ({}))
-            throw new Error(data.error || `Upload failed for ${finalName}`)
+            let errMsg = `Upload failed for ${finalName}`
+            try {
+              const data = await res.json()
+              errMsg = data.error || errMsg
+            } catch {
+              const text = await res.text().catch(() => "")
+              if (res.status === 413 || text.includes("Request Entity Too Large")) {
+                errMsg = `File "${finalName}" is too large! Maximum file limit is under 4MB.`
+              } else if (text) {
+                errMsg = text.slice(0, 150)
+              }
+            }
+            throw new Error(errMsg)
           }
 
           completedCount++
@@ -466,11 +487,16 @@ function UploadModal({
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose() }}>
       <DialogContent className="bg-card border-[3px] border-foreground rounded-[1.5rem] sm:rounded-[2rem] shadow-[6px_6px_0px_black] sm:shadow-[8px_8px_0px_black] max-w-lg p-4 sm:p-6 md:p-7 max-h-[88dvh] sm:max-h-[85vh] flex flex-col w-[calc(100%-1.25rem)] sm:w-full overflow-hidden">
         <DialogHeader className="shrink-0 pb-1">
-          <DialogTitle className="font-heading font-extrabold text-[19px] sm:text-[22px] text-foreground flex items-center gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] flex items-center justify-center shadow-[2px_2px_0px_black]">
-              <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
+          <DialogTitle className="font-heading font-extrabold text-[19px] sm:text-[22px] text-foreground flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[8px] border-[2px] border-foreground bg-[#FFD600] flex items-center justify-center shadow-[2px_2px_0px_black]">
+                <Upload className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground" />
+              </div>
+              <span>Upload to Vault</span>
             </div>
-            Upload to Vault
+            <span className="text-[12px] font-bold text-muted-foreground bg-muted px-2.5 py-1 rounded-full border border-foreground/20">
+              Limit: under 4MB
+            </span>
           </DialogTitle>
         </DialogHeader>
 
@@ -486,6 +512,7 @@ function UploadModal({
                   <Upload className="w-4 h-4 text-foreground" />
                 </div>
                 <p className="font-heading font-bold text-[12px] sm:text-[13px] text-foreground">Upload Files</p>
+                <p className="font-mono text-[10px] text-muted-foreground">Files under 4MB</p>
                 <input ref={fileInputRef} type="file" multiple className="hidden" onChange={handleFileSelect} />
               </div>
 
@@ -497,6 +524,7 @@ function UploadModal({
                   <FolderPlus className="w-4 h-4 text-foreground" />
                 </div>
                 <p className="font-heading font-bold text-[12px] sm:text-[13px] text-foreground">Upload Folder</p>
+                <p className="font-mono text-[10px] text-muted-foreground">Files under 4MB</p>
                 {/* @ts-expect-error - webkitdirectory is a non-standard attribute but widely supported */}
                 <input ref={folderInputRef} type="file" webkitdirectory="" directory="" multiple className="hidden" onChange={handleFileSelect} />
               </div>
@@ -589,7 +617,7 @@ function UploadModal({
                           </p>
                           {item.isTooLarge && (
                             <span className="font-mono text-[10px] text-[#FF3B30] font-bold bg-[#FF3B30]/10 px-1.5 py-0.5 rounded-sm">
-                              Exceeds 20MB limit
+                              Exceeds 4MB limit (must be under 4MB)
                             </span>
                           )}
                         </div>

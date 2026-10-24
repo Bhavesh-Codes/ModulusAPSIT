@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import {
   ExcelLogo,
+  FileLinesLogo,
   getFileIcon,
   getLinkIcon,
   isArchiveFile,
@@ -76,12 +77,12 @@ export function VaultItemThumbnail({
     ? safeFilename.split(".").pop()?.toUpperCase()
     : null
 
-  // 1. YouTube video thumbnail (compact h-24)
+  // 1. YouTube video thumbnail (h-28)
   if (isLink && ytVideoId) {
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden bg-black rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground"
+        className="w-full h-28 relative overflow-hidden bg-black rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground"
       >
         <img
           src={`https://img.youtube.com/vi/${ytVideoId}/mqdefault.jpg`}
@@ -95,7 +96,7 @@ export function VaultItemThumbnail({
             <Play className="w-4 h-4 fill-white translate-x-0.5" />
           </div>
         </div>
-        <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-white font-mono text-[9px] pointer-events-none">
+        <div className="absolute bottom-2 left-3 right-3 flex items-center justify-between text-white font-mono text-[9px] pointer-events-none z-10">
           <span className="px-1.5 py-0.5 rounded-[4px] bg-[#FF0000] font-bold text-white tracking-wider">
             YOUTUBE
           </span>
@@ -107,14 +108,14 @@ export function VaultItemThumbnail({
     )
   }
 
-  // 2. Real Image Thumbnail (compact h-24)
+  // 2. Real Image Thumbnail (h-28)
   if (isImage && thumbnailUrl && !imgFailed) {
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] bg-muted/40 cursor-pointer group/thumb border-b-[2px] border-foreground flex items-center justify-center"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] bg-muted/40 cursor-pointer group/thumb border-b-[2px] border-foreground flex items-center justify-center"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(#88888825_1px,transparent_1px)] [background-size:10px_10px] opacity-70" />
+        <div className="absolute inset-0 bg-[radial-gradient(#88888825_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
         <img
           src={thumbnailUrl}
           alt={safeFilename || "Image preview"}
@@ -132,81 +133,42 @@ export function VaultItemThumbnail({
     )
   }
 
-  // 3. PowerPoint Presentation (Distinct Widescreen 16:9 Presentation Canvas in vibrant Microsoft Orange #EA580C)
+  // 3. PowerPoint Presentation (PowerPoint Tangerine Orange #F97316)
   if (isPpt) {
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#EA580C]/20 via-[#FFF7ED] dark:via-[#1F1208] to-[#EA580C]/30 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        {/* Horizontal 16:9 slide presentation canvas */}
-        <div className="w-[148px] h-[70px] bg-[#18181B] text-white rounded-[6px] border-[1.5px] border-[#EA580C] shadow-[2.5px_2.5px_0px_#EA580C] flex flex-col justify-between p-2 relative overflow-hidden group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5">
-              <PptLogo className="w-4 h-4 shrink-0" />
-              <div className="h-1.5 bg-[#EA580C] rounded-full w-12" />
-            </div>
-            <span className="font-mono text-[7px] text-[#EA580C] font-bold uppercase tracking-wider">16:9</span>
-          </div>
-
-          {/* Slide layout: chart/presentation blocks */}
-          <div className="flex items-end gap-1.5 h-4 px-1 py-0.5">
-            <div className="w-3 h-2 bg-[#EA580C] rounded-sm" />
-            <div className="w-3 h-3.5 bg-white/70 rounded-sm" />
-            <div className="w-3 h-2.5 bg-white/40 rounded-sm" />
-            <div className="w-3 h-4 bg-[#EA580C]/80 rounded-sm" />
-            <div className="space-y-1 ml-1 flex-1">
-              <div className="h-1 bg-white/40 rounded-full w-full" />
-              <div className="h-1 bg-white/20 rounded-full w-3/4" />
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between font-mono text-[7px] text-white/60 border-t border-white/10 pt-0.5">
-            <span className="text-[#EA580C] font-bold">SLIDE DECK</span>
-            <span className="uppercase">{ext || "PPTX"}</span>
-          </div>
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#F97316]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <PptLogo className="w-14 h-14 shrink-0" color="#F97316" />
         </div>
-
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#EA580C] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
-            SLIDES
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#F97316] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
+            {ext || "PPTX"}
           </span>
         </div>
       </div>
     )
   }
 
-  // 4. PDF Document (Distinct Vertical Page in Adobe Red #DC2626)
+  // 4. PDF Document (Adobe Crimson Red #E11D48)
   if (isPdf) {
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#DC2626]/12 via-[#F8FAFC] dark:via-[#1A1214] to-[#DC2626]/20 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        {/* Mini 8.5x11 Document Page preview */}
-        <div className="w-[100px] h-[72px] bg-white dark:bg-[#1E1E1E] rounded-[5px] border-[1.5px] border-[#DC2626] shadow-[2.5px_2.5px_0px_#DC2626] flex flex-col justify-between p-1.5 relative overflow-hidden group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-[#DC2626]/20">
-            <PdfLogo className="w-3.5 h-3.5 shrink-0" />
-            <div className="h-1.5 bg-[#DC2626] rounded-full w-10" />
-          </div>
-
-          {/* Structured text paragraph lines */}
-          <div className="space-y-0.5 py-0.5">
-            <div className="h-0.5 bg-foreground/30 rounded-full w-full" />
-            <div className="h-0.5 bg-foreground/20 rounded-full w-5/6" />
-            <div className="h-0.5 bg-foreground/20 rounded-full w-full" />
-            <div className="h-0.5 bg-foreground/15 rounded-full w-3/4" />
-          </div>
-
-          <div className="flex items-center justify-between font-mono text-[7px] text-[#DC2626] font-bold">
-            <span>DOC</span>
-            <span>PDF</span>
-          </div>
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#E11D48]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <PdfLogo className="w-14 h-14 shrink-0" color="#E11D48" />
         </div>
-
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#DC2626] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
-            PDF DOC
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#E11D48] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
+            PDF
           </span>
         </div>
       </div>
@@ -218,27 +180,16 @@ export function VaultItemThumbnail({
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#2563EB]/12 via-[#EFF6FF] dark:via-[#101827] to-[#2563EB]/20 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="w-[100px] h-[72px] bg-white dark:bg-[#1E1E1E] rounded-[5px] border-[1.5px] border-[#2563EB] shadow-[2.5px_2.5px_0px_#2563EB] flex flex-col justify-between p-1.5 relative overflow-hidden group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <div className="flex items-center gap-1.5 pb-1 border-b border-[#2563EB]/20">
-            <WordLogo className="w-3.5 h-3.5 shrink-0" />
-            <div className="h-1.5 bg-[#2563EB] rounded-full w-10" />
-          </div>
-          <div className="space-y-0.5 py-0.5">
-            <div className="h-0.5 bg-foreground/30 rounded-full w-full" />
-            <div className="h-0.5 bg-foreground/20 rounded-full w-5/6" />
-            <div className="h-0.5 bg-foreground/15 rounded-full w-3/4" />
-          </div>
-          <div className="flex items-center justify-between font-mono text-[7px] text-[#2563EB] font-bold">
-            <span>WORD</span>
-            <span>{ext || "DOCX"}</span>
-          </div>
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#2563EB]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <WordLogo className="w-14 h-14 shrink-0" color="#2563EB" />
         </div>
-
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#2563EB] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
-            WORD
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#2563EB] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
+            {ext || "DOCX"}
           </span>
         </div>
       </div>
@@ -250,96 +201,57 @@ export function VaultItemThumbnail({
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#16A34A]/12 via-[#F0FDF4] dark:via-[#0E2015] to-[#16A34A]/20 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="w-[124px] h-[72px] bg-white dark:bg-[#1E1E1E] rounded-[5px] border-[1.5px] border-[#16A34A] shadow-[2.5px_2.5px_0px_#16A34A] flex flex-col justify-between p-1.5 relative overflow-hidden group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <div className="flex items-center gap-1.5 pb-0.5">
-            <ExcelLogo className="w-3.5 h-3.5 shrink-0" />
-            <div className="h-1.5 bg-[#16A34A] rounded-full w-12" />
-          </div>
-          <div className="grid grid-cols-3 gap-0.5 border border-[#16A34A]/30 rounded p-0.5 bg-[#16A34A]/5">
-            <div className="h-2 bg-[#16A34A]/30 rounded-[1px]" />
-            <div className="h-2 bg-[#16A34A]/30 rounded-[1px]" />
-            <div className="h-2 bg-[#16A34A]/30 rounded-[1px]" />
-            <div className="h-2 bg-foreground/10 rounded-[1px]" />
-            <div className="h-2 bg-foreground/10 rounded-[1px]" />
-            <div className="h-2 bg-foreground/10 rounded-[1px]" />
-          </div>
-          <div className="flex items-center justify-between font-mono text-[7px] text-[#16A34A] font-bold">
-            <span>SHEET</span>
-            <span>{ext || "XLSX"}</span>
-          </div>
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#16A34A]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <ExcelLogo className="w-14 h-14 shrink-0" color="#16A34A" />
         </div>
-
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#16A34A] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
-            SHEET
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#16A34A] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
+            {ext || "XLSX"}
           </span>
         </div>
       </div>
     )
   }
 
-  // 7. Code / Developer File (Dark Editor #0F172A)
+  // 7. Code / Developer File
   if (isCode) {
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0F172A] flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="w-[130px] h-[70px] bg-[#0A0F1D] rounded-[5px] border-[1.5px] border-white/20 shadow-[2.5px_2.5px_0px_#0057FF] flex flex-col justify-between p-1.5 relative overflow-hidden group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <div className="flex items-center gap-1 pb-0.5 border-b border-white/10">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#FF5F56]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#FFBD2E]" />
-            <div className="w-1.5 h-1.5 rounded-full bg-[#27C93F]" />
-            <span className="font-mono text-[8px] text-white/50 ml-auto">.{ext?.toLowerCase() || "code"}</span>
-          </div>
-          <div className="space-y-0.5 font-mono text-[8px] leading-tight">
-            <div className="flex items-center gap-1">
-              <span className="text-[#FF7B72]">const</span>
-              <span className="text-[#79C0FF]">modulus</span>
-              <span className="text-white">=</span>
-              <span className="text-[#A5D6FF]">true</span>
-            </div>
-            <div className="h-0.5 bg-white/15 rounded-full w-3/4" />
-          </div>
-          <div className="flex items-center justify-between font-mono text-[7px] text-[#79C0FF]">
-            <span>UTF-8</span>
-            <span>DEV</span>
-          </div>
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#0057FF]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <FileCode className="w-14 h-14 text-[#0057FF]" />
         </div>
-
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0057FF] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
-            CODE
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#0057FF] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
+            {ext || "CODE"}
           </span>
         </div>
       </div>
     )
   }
 
-  // 8. Audio Visualizer (Amber #EAB308)
+  // 8. Audio Visualizer
   if (isAudio) {
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#EAB308]/20 via-[#FEFCE8] dark:via-[#1F1D08] to-[#EA580C]/20 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="flex items-center gap-2 px-2.5 py-1.5 bg-card border-[1.5px] border-foreground rounded-[8px] shadow-[2px_2px_0px_black]">
-          <div className="w-6 h-6 rounded-[6px] bg-[#EAB308] border-[1px] border-foreground flex items-center justify-center">
-            <Music className="w-3.5 h-3.5 text-foreground" />
-          </div>
-          <div className="flex items-end gap-1 h-5 px-1">
-            <div className="w-1 h-2 bg-[#EA580C] rounded-full" />
-            <div className="w-1 h-4 bg-[#EAB308] rounded-full" />
-            <div className="w-1 h-3 bg-foreground rounded-full" />
-            <div className="w-1 h-5 bg-[#FF3CAC] rounded-full" />
-            <div className="w-1 h-3 bg-[#0057FF] rounded-full" />
-          </div>
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#EAB308]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <Music className="w-14 h-14 text-[#EAB308]" />
         </div>
-
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#EAB308] text-foreground font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-foreground">
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#EAB308] text-foreground font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-foreground">
             AUDIO
           </span>
         </div>
@@ -352,13 +264,15 @@ export function VaultItemThumbnail({
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#FF3CAC]/25 via-black to-[#0057FF]/35 flex items-center justify-center select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="w-9 h-9 rounded-full bg-[#FF3CAC] text-white flex items-center justify-center shadow-[0_4px_16px_rgba(255,60,172,0.6)] group-hover/thumb:scale-110 transition-transform">
-          <Play className="w-4 h-4 fill-white translate-x-0.5" />
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#FF3CAC]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <Video className="w-14 h-14 text-[#FF3CAC]" />
         </div>
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#FF3CAC] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#FF3CAC] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
             VIDEO
           </span>
         </div>
@@ -371,13 +285,14 @@ export function VaultItemThumbnail({
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-muted/50 via-card to-muted/80 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="w-11 h-11 rounded-[10px] border-[1.5px] border-foreground bg-card flex items-center justify-center shadow-[2px_2px_0px_black] group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <Archive className="w-5 h-5 text-foreground" />
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          <Archive className="w-14 h-14 text-foreground" />
         </div>
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-foreground text-background font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black]">
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-foreground text-background font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black]">
             {ext || "ARCHIVE"}
           </span>
         </div>
@@ -390,13 +305,15 @@ export function VaultItemThumbnail({
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#2684fc]/15 via-white dark:via-[#161C24] to-[#00ac47]/15 flex items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
       >
-        <div className="w-11 h-11 rounded-[10px] border-[1.5px] border-foreground bg-card flex items-center justify-center shadow-[2px_2px_0px_black] p-2 group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          {getLinkIcon(safeUrl, "w-6 h-6")}
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#0066da]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+          {getLinkIcon(safeUrl, "w-14 h-14")}
         </div>
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0066da] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black]">
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#0066da] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
             DRIVE
           </span>
         </div>
@@ -409,16 +326,18 @@ export function VaultItemThumbnail({
     return (
       <div
         onClick={onOpen}
-        className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-[#0057FF]/10 via-card to-[#0057FF]/20 flex flex-col items-center justify-center px-4 select-none"
+        className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex flex-col items-center justify-center select-none"
       >
-        <div className="w-10 h-10 rounded-[8px] border-[1.5px] border-foreground bg-card flex items-center justify-center shadow-[2px_2px_0px_black] group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-          <ExternalLink className="w-5 h-5 text-[#0057FF]" />
+        <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+        <div className="absolute w-24 h-24 rounded-full bg-[#0057FF]/10 blur-xl pointer-events-none" />
+        <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110 mb-1">
+          <ExternalLink className="w-12 h-12 text-[#0057FF]" />
         </div>
-        <span className="font-mono text-[10px] font-bold text-foreground/80 mt-1 truncate max-w-[85%]">
+        <span className="relative z-10 font-mono text-[10px] font-bold text-foreground/80 truncate max-w-[85%]">
           {domain || "Web Link"}
         </span>
-        <div className="absolute bottom-1.5 left-3 pointer-events-none">
-          <span className="px-1.5 py-0.5 rounded-[4px] bg-[#0057FF] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black]">
+        <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+          <span className="px-2 py-0.5 rounded-[5px] bg-[#0057FF] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
             LINK
           </span>
         </div>
@@ -430,13 +349,14 @@ export function VaultItemThumbnail({
   return (
     <div
       onClick={onOpen}
-      className="w-full h-24 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-gradient-to-br from-muted/30 via-card to-muted/60 flex items-center justify-center px-4 select-none"
+      className="w-full h-28 relative overflow-hidden rounded-t-[1.35rem] cursor-pointer group/thumb border-b-[2px] border-foreground bg-muted/30 dark:bg-muted/15 flex items-center justify-center select-none"
     >
-      <div className="w-10 h-10 rounded-[8px] border-[1.5px] border-foreground bg-card flex items-center justify-center shadow-[2px_2px_0px_black] group-hover/thumb:translate-x-[1px] group-hover/thumb:translate-y-[1px] group-hover/thumb:shadow-none transition-all">
-        {getFileIcon(safeMime, "w-5 h-5", safeFilename)}
+      <div className="absolute inset-0 bg-[radial-gradient(#88888820_1px,transparent_1px)] [background-size:10px_10px] opacity-70 pointer-events-none" />
+      <div className="relative z-10 transition-transform duration-200 group-hover/thumb:scale-110">
+        <FileLinesLogo className="w-14 h-14 text-[#64748B]" />
       </div>
-      <div className="absolute bottom-1.5 left-3 pointer-events-none">
-        <span className="px-1.5 py-0.5 rounded-[4px] bg-foreground text-background font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black]">
+      <div className="absolute bottom-2 left-3 pointer-events-none z-10">
+        <span className="px-2 py-0.5 rounded-[5px] bg-[#64748B] text-white font-mono text-[8px] font-extrabold tracking-wider shadow-[1.5px_1.5px_0px_black] border border-black/20">
           {ext || "FILE"}
         </span>
       </div>
