@@ -98,9 +98,11 @@ function ShareDialogBody({ open, onClose, sources, lockedCommunityId, defaultSub
 
   // ── warn if any selected file exceeds 4MB ─────────────────────────────────
   useEffect(() => {
-    const oversized = sources.filter((s) => s.kind === "file" && s.file.size > MAX_FILE_SIZE)
-    if (oversized.length > 0) {
-      toast.error(`File too large! "${oversized[0].name}" exceeds 4MB. Please upload files under 4MB.`)
+    const firstOversized = sources.find(
+      (s): s is Extract<ShareSource, { kind: "file" }> => s.kind === "file" && s.file.size > MAX_FILE_SIZE
+    )
+    if (firstOversized) {
+      toast.error(`File too large! "${firstOversized.name}" exceeds 4MB. Please upload files under 4MB.`)
     }
   }, [sources])
 
